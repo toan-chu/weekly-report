@@ -1,0 +1,12 @@
+settings.json
+log/*.log
+__pycache__/
+*.pyc
+.pytest_cache/
+chay_nen.bat
+.pytest_cache/
+*.tmp
+
+# Dữ liệu công nợ thật dùng để chạy phép thử — không đưa lên repo công khai.
+# Đặt lại vào handoff/docs/fixtures/ thì các phép thử đối chiếu tự chạy lại.
+handoff/docs/fixtures/
