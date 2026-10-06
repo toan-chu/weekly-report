@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Wizard cài đặt — chạy qua setup.bat, người dùng chỉ gõ số.
+"""Wizard cài đặt — chạy qua 1_Khoi_tao_workspace.bat, người dùng chỉ gõ số.
 
-Làm 4 việc:
+Gọi từ 1_Khoi_tao_workspace.bat. Làm 4 việc:
   1. Dò các thư mục OneDrive / SharePoint đã đồng bộ trên máy
   2. Tạo các ngăn thư mục làm việc
   3. Ghi settings.json cho đúng máy này
@@ -101,10 +101,13 @@ def main() -> int:
     else:
         print("\nKhông phải Windows nên bỏ qua bước đăng ký lịch chạy.")
 
-    print("\nCòn một việc nữa, làm một lần duy nhất: nạp trạng thái ban đầu từ")
-    print("báo cáo tuần gần nhất kế toán đã làm tay, ví dụ")
-    print('   python runner.py --nap-bao-cao "...W38...xlsx" --ngay-chot 2026-09-19')
-    print("\nXong. Từ giờ kế toán chỉ cần thả 2 file Misa vào thư mục 01_Input.")
+    print("\nCòn 2 việc, làm một lần duy nhất:")
+    print(f"  1. Bỏ file ghép khách SMS ↔ Misa (FIN đã điền) vào   {cfg.ghep}")
+    print(f"  2. Bỏ bản final tuần gần nhất của kế toán trưởng vào  {cfg.ra}")
+    print("     (chỉ cần lần đầu — từ tuần sau tool tự đọc báo cáo tuần trước ở đây)")
+    print("  rồi nháy đúp 2_Kiem_tra_ghep_khach.bat để xem tool đã hiểu đúng chưa.")
+    print(f"\nXong. Mỗi tuần chỉ cần thả 3 file (2 Misa + 1 SMS AR-AP) vào {cfg.vao}")
+    print("Muốn có ngay, không chờ lịch 15 phút: nháy đúp 3_Chay_ngay.bat.")
     return 0
 
 

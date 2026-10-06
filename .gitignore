@@ -10,3 +10,6 @@ chay_nen.bat
 # Dữ liệu công nợ thật dùng để chạy phép thử — không đưa lên repo công khai.
 # Đặt lại vào handoff/docs/fixtures/ thì các phép thử đối chiếu tự chạy lại.
 handoff/docs/fixtures/
+
+# File Excel thật (Misa, SMS, ghép khách, bản final) đặt tạm để phân tích — không lên repo.
+handoff/docs/*.xlsx

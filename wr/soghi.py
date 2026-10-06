@@ -63,13 +63,15 @@ class HoSoKhach:
     nhom: List[float] = field(default_factory=lambda: [0.0] * 6)
     lo: List[Lo] = field(default_factory=list)
     nguon: str = ""
+    job: str = ""
 
     @classmethod
     def tu_dict(cls, d: dict) -> "HoSoKhach":
         d = dict(d)
         d["lo"] = [Lo(**x) for x in d.get("lo", [])]
         d.setdefault("nhom", [0.0] * 6)
-        return cls(**d)
+        biet = set(cls.__dataclass_fields__)
+        return cls(**{k: v for k, v in d.items() if k in biet})
 
     def thanh_dict(self) -> dict:
         d = asdict(self)
@@ -87,6 +89,8 @@ class SoGhi:
         # Khách kế toán chủ động loại khỏi bảng dù Misa còn ghi nợ,
         # ví dụ nợ ảo do lỗi xuất hoá đơn. Vẫn hiện ở sheet Cần xem lại.
         self.bo_qua: Dict[str, dict] = {}
+        # Bản final người duyệt đã nạp: tên file -> dấu thời gian sửa, để không nạp lại
+        self.da_nap: Dict[str, str] = {}
         if self.duong_dan.exists():
             self._doc()
 
@@ -96,6 +100,7 @@ class SoGhi:
         self.ngoai_le = raw.get("ngoai_le", {})
         self.dieu_chinh = raw.get("dieu_chinh", {})
         self.bo_qua = raw.get("bo_qua", {})
+        self.da_nap = raw.get("da_nap", {})
         for ngay, khach in raw.get("trang", {}).items():
             self.trang[ngay] = {k: HoSoKhach.tu_dict(v) for k, v in khach.items()}
 
@@ -107,6 +112,7 @@ class SoGhi:
             "ngoai_le": self.ngoai_le,
             "dieu_chinh": self.dieu_chinh,
             "bo_qua": self.bo_qua,
+            "da_nap": self.da_nap,
             "trang": {
                 ngay: {k: v.thanh_dict() for k, v in khach.items()}
                 for ngay, khach in sorted(self.trang.items())
@@ -182,8 +188,6 @@ def so_ngay_term(credit_term: str, mac_dinh: int = 30) -> int:
     t = str(credit_term or "").strip().lower()
     if not t:
         return mac_dinh
-    if "ngay" in t.replace("à", "a").replace("â", "a") and "ngày" not in t:
-        pass
     if "thanh toán ngay" in t or t in {"cod", "prepay", "prepaid"}:
         return 0
     m = _re.search(r"(\d+)", t)

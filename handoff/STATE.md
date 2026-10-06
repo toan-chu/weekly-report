@@ -1,17 +1,24 @@
-Cập nhật:  2026-09-24 21:00 UTC+7 — bởi claude-logisticist
+Cập nhật:  2026-10-06 UTC+7 — bởi claude-logisticist
 Chỉ huy:   claude   [COWORK-EXEC]
 
 ## Việc đang mở
+   WR-03   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 0/2
+           Ghép SMS + file ghép khách + bản final. Logic đạt 27 phép thử, chạy thật
+           W40 tổng khớp Misa. Chờ Chairman: chạy 3 nút trên máy FIN, chốt ngưỡng khớp.
+
    WR-02   giao cho chairman   chờ-đề-bài   vòng 0/2
-           Nghiệm thu bằng phép so hợp lệ: kế toán làm tay trên đúng cặp file
-           Misa mà tool đã chạy. Chờ Chairman viết kịch bản nghiệm thu.
+           Nghiệm thu bằng phép so hợp lệ. Có thể gộp vào ngưỡng nghiệm thu của WR-03.
 
    WR-01   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Logic ĐẠT (29 phép thử). Chạy trên Windows của Chairman ĐẠT một phần
-           (bằng chứng: runner.log 23/09 16:04, ra file W39). Còn 3 dòng chờ
-           Chairman hoặc Codex ký: setup.bat, Task Scheduler, hiển thị Excel.
+           Còn 3 dòng Windows chờ ký (nay là 1_Khoi_tao_workspace.bat, Task Scheduler, Excel).
 
-## Hôm nay
+## Hôm nay (06/10)
+   Tuần 39 FIN báo 11 khách sai tuổi: do file Misa không có ngày hoá đơn (56,9/74,5 tỷ ở
+   cột "không có hạn nợ"). Thêm nguồn SMS AR-AP (ngày từng job), file ghép khách FIN điền,
+   bản final kế toán trưởng làm trí nhớ nợ cũ. 3 nút .bat cho máy FIN. Xem WR-03.
+   FIN trả lời 3 câu về file ghép: handoff/docs/NOTE-ke-toan-tra-loi-20261006.md.
+
+## Hôm 24/09 (tối)
    Đổi nhịp chạy nền sang 15 phút. Dọn rác trong thư mục mã nguồn và chặn không
    cho sinh lại: lệnh chỉ đọc không tạo thư mục, cấu hình của máy khác thì báo
    chứ không đẻ thư mục tên "C:\Users\...", tắt sinh .pyc khi chạy nền, tắt
@@ -67,16 +74,17 @@ Chỉ huy:   claude   [COWORK-EXEC]
    chưa có
 
 ## Đang treo, cần Chairman
-   -1. Ký 3 dòng còn lại trong ô ký nghiệm thu của WR-01, rồi phiếu chuyển
-      đóng-đạt. Viết kịch bản nghiệm thu cho WR-02.
-   0. Chốt cách nghiệm thu mới: kế toán làm tay trên ĐÚNG cặp file Misa đã thả
-      vào 01_Input, rồi mới so với bản máy. So với bản làm từ lần xuất khác là
-      kết luận sai về tool.
-   1. Ký nghiệm thu phần chạy trên Windows: chạy setup.bat, xem Task Scheduler
-      có tạo được tác vụ không, mở file kết quả bằng Excel xem màu và tiếng Việt.
-   2. Máy nào chạy lịch nền, mấy giờ thứ mấy. Wizard đang đặt 30 phút quét một lần.
+   1. Cài lên máy FIN: git pull → 1_Khoi_tao_workspace.bat → bỏ file ghép khách vào
+      sample/, w39 final vào thư mục gốc → 2_Kiem_tra_ghep_khach.bat. Ký 3 dòng Windows.
+   2. Chốt ngưỡng nghiệm thu WR-03: bao nhiêu/70 khách khớp bản kế toán trưởng tuần 40.
+   3. Hỏi FIN: tuổi nợ tính từ ETD/ETA hay ngày xuất hoá đơn (tool đang giả định ETD/ETA).
+   4. FIN sửa 1 dòng file ghép: TTND VIETNGA bỏ khỏi sheet Ghép khách (đã theo KH00416),
+      và ghép KH00361 Trung tâm nhiệt đới Việt Nga nếu có mã SMS.
 
 ## Bẫy đã biết
+   - File SMS không có kỳ báo cáo bên trong: tool lấy file SMS mới nhất trong 01_Input.
+   - SMS quy VND theo tỷ giá lúc làm job, Misa theo lúc hạch toán: vênh ≤1% (tối đa
+     500.000đ) coi là tỷ giá, không báo.
    - File Misa tải về bị Windows thêm hậu tố (21), (22) vào tên. Con số đó
      không có nghĩa. Luôn đọc ngày chốt ghi bên trong file, không tin tên file.
    - File Tuổi nợ phồng số: W38 cộng ra 73 tỷ trong khi thực nợ 10,0 tỷ, vì

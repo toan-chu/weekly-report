@@ -29,7 +29,7 @@ Chia theo đường lấy bằng chứng, không theo vai.
 - Claude ký được: logic tính toán, so khớp số giữa file máy sinh và file kế
   toán làm tay, đối chiếu công thức. Bắt buộc dán lệnh và kết quả vào khoang AUDIT.
 - Claude KHÔNG ký được: phép thử đạt/hỏng chạy trên máy Windows của kế toán,
-  `setup.bat` có cài được lịch chạy không, Task Scheduler có gọi đúng không,
+  `1_Khoi_tao_workspace.bat` có cài được lịch chạy không, Task Scheduler có gọi đúng không,
   toàn vẹn file, mã hoá ký tự tiếng Việt khi mở bằng Excel thật. Đó là độc
   quyền Codex hoặc Chairman, chứng minh bằng lệnh và kết quả dán vào.
 
@@ -55,7 +55,10 @@ Chia theo đường lấy bằng chứng, không theo vai.
 
 ### 5.1 Ranh giới với người dùng
 
-- Thao tác duy nhất của kế toán là thả 2 file Misa vào thư mục `01_Input`.
+- Thao tác hằng tuần duy nhất của kế toán là thả 3 file (2 Misa + 1 SMS AR-AP) vào
+  `input/` (Chairman chốt 2026-10-06, WR-03). Thao tác một lần: điền file ghép
+  khách vào `sample/`, bỏ bản final tuần gần nhất vào thư mục gốc. Bố cục thư mục đích:
+  gốc (báo cáo) + `input/` + `sample/` + `_tool/` ẩn — Chairman chốt 06/10.
   Mọi thiết kế ép kế toán mở file ra sửa, điền, hay chạy lệnh đều là vi phạm.
 - Tool không bao giờ chặn không ra báo cáo vì thiếu thông tin. Không chắc chỗ
   nào thì vẫn ra file, đánh dấu chỗ đó vào sheet "Cần xem lại".
@@ -64,6 +67,9 @@ Chia theo đường lấy bằng chứng, không theo vai.
 
 ### 5.2 Số liệu
 
+- Có file SMS: SMS chỉ quyết NGÀY từng job, không bao giờ quyết tiền. SMS ghi nhiều
+  hơn Misa thì bỏ job cũ nhất và liệt kê cho FIN gạch paid
+  (`handoff/docs/NOTE-ke-toan-tra-loi-20261006.md`).
 - Total của một khách luôn lấy từ file **Tổng hợp công nợ phải thu**, cột số dư
   cuối kỳ bên Nợ. Khi file Tổng hợp và file Tuổi nợ mâu thuẫn, tiền theo Tổng hợp.
 - Danh sách khách = khách có số dư cuối kỳ bên Nợ lớn hơn 0. Khách trả trước

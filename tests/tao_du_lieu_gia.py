@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Sinh 2 file Misa GIẢ để thử tool mà không cần dữ liệu thật.
 
-    python tests/tao_du_lieu_gia.py "<thư mục 01_Input>"
+    python tests/tao_du_lieu_gia.py "<thư mục input>"
 
 Số liệu bịa hoàn toàn, tên khách không có thật. Bộ dữ liệu cố tình gài đủ các
 tình huống: nợ trong hạn, quá hạn từng nhóm, hoá đơn không ghi hạn, hai file

@@ -237,7 +237,7 @@ def test_sheet_can_xem_lai_giai_thich_chenh_lech_hai_file(tmp_path):
     Cần xem lại phải nói thẳng vì sao và chỉ đúng khách gây lệch."""
     import openpyxl
     dich, _ = _chay(tmp_path, 38)
-    ws = openpyxl.load_workbook(dich)["Cần xem lại"]
+    ws = openpyxl.load_workbook(dich)["Review"]
     chu = "\n".join(str(c.value or "") for r in ws.iter_rows(max_row=80) for c in r)
     assert "Tổng file Tổng hợp công nợ" in chu
     assert "Tổng file Phân tích tuổi nợ" in chu
@@ -249,7 +249,7 @@ def test_sheet_can_xem_lai_giai_thich_chenh_lech_hai_file(tmp_path):
 def test_giai_thich_no_trong_han_khac_file_tuoi_no(tmp_path):
     import openpyxl
     dich, _ = _chay(tmp_path, 38)
-    ws = openpyxl.load_workbook(dich)["Cần xem lại"]
+    ws = openpyxl.load_workbook(dich)["Review"]
     chu = "\n".join(str(c.value or "") for r in ws.iter_rows(max_row=80) for c in r)
     assert "Nợ trong hạn trên báo cáo" in chu
     assert "chưa xác định được tuổi" in chu
@@ -370,7 +370,7 @@ def test_loai_khach_khoi_bao_cao_va_van_ghi_lai(tmp_path):
                  "--ra", str(tmp_path), "--so-ghi", str(so_ghi), "--mau-chuan", str(MAU)])
     f = next(tmp_path.glob("2026_W38*.xlsx"))
     assert misa.chuan_hoa_ten("OPTIMALOG LLC") not in baocao.doc_bao_cao(f)
-    ws = openpyxl.load_workbook(f)["Cần xem lại"]
+    ws = openpyxl.load_workbook(f)["Review"]
     chu = "\n".join(str(c.value or "") for r in ws.iter_rows() for c in r)
     assert "Khách bị loại khỏi bảng" in chu and "OPTIMALOG" in chu
     runner.main(["--nhan-lai", "OPTIMALOG LLC", "--so-ghi", str(so_ghi)])
@@ -385,7 +385,7 @@ def test_bao_cao_ghi_lai_nguon_du_lieu(tmp_path):
     trên lần xuất nào."""
     import openpyxl
     dich, _ = _chay(tmp_path, 37)
-    ws = openpyxl.load_workbook(dich)["Cần xem lại"]
+    ws = openpyxl.load_workbook(dich)["Review"]
     chu = "\n".join(str(c.value or "") for r in ws.iter_rows(max_row=10) for c in r)
     assert "Nguồn dữ liệu" in chu and "file sửa lần cuối" in chu
     assert "cùng một lần xuất Misa" in chu

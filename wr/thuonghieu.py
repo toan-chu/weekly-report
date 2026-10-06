@@ -8,12 +8,20 @@ XAM_NHAT = "F2F2F2"
 VANG_CANH_BAO = "FFF2CC"
 DO_CANH_BAO = "FCE4E4"
 
+# Chữ trên báo cáo — báo cáo có lúc gửi đối tác nước ngoài nên để tiếng Anh.
+# Sửa chữ ở đây là đủ, tool ghi lại các dòng này mỗi lần chạy.
+CONG_TY = "TRUSTANA VIETNAM"
+TEN_BAO_CAO = "Debtors and Creditors Ageing Reports"
+TEN_BANG = "Accounts receivable"
+SHEET_BANG = "Receivable"
+SHEET_REVIEW = "Review"
+
 PHONG_TIEU_DE = "Roboto"   # heading
 PHONG_NOI_DUNG = "Calibri" # body
 
 # Cột định danh (nền cam) và cột tiền (nền tím) của sheet Receivable
 COT = [
-    ("STT", "ten", 6),
+    ("No.", "ten", 6),
     ("Code", "ten", 16),
     ("Customers' Name", "ten", 46),
     ("Credit Term", "ten", 14),
@@ -25,9 +33,10 @@ COT = [
     ("91 - 120", "tien", 15),
     ("120+", "tien", 15),
     ("Salesman", "ten", 12),
-    ("Ghi chú", "ten", 34),
-    ("Lý do chưa thu hồi được công nợ", "ten", 34),
+    ("Notes", "ten", 34),
+    ("Reason for late payment", "ten", 34),
 ]
 
-DONG_TIEU_DE = 7      # dòng chứa tên cột
-DONG_DAU_DU_LIEU = 8  # dòng dữ liệu đầu tiên
+# Dòng 1 công ty · 2 tên báo cáo · 3 ngày chốt · 4 tên bảng · 5 tên cột
+DONG_TIEU_DE = 5      # dòng chứa tên cột
+DONG_DAU_DU_LIEU = 6  # dòng dữ liệu đầu tiên

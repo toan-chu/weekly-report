@@ -5,12 +5,12 @@
 **Tự động dựng bảng công nợ phải thu hằng tuần cho TRUSTANA Việt Nam**
 
 [![Trustana](https://img.shields.io/badge/TRUSTANA-4d148c?style=for-the-badge&logoColor=white)](#)
-[![Phiên bản](https://img.shields.io/badge/phiên%20bản-0.2-ff6200?style=for-the-badge)](#)
-[![Phép thử](https://img.shields.io/badge/phép%20thử-29%20đạt-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
+[![Phiên bản](https://img.shields.io/badge/phiên%20bản-0.3-ff6200?style=for-the-badge)](#)
+[![Phép thử](https://img.shields.io/badge/phép%20thử-47-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-4d148c?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#)
 
-### Kế toán thả 2 file Misa vào một thư mục. Báo cáo tự xuất hiện. Hết.
+### Kế toán thả 3 file (2 Misa + 1 SMS) vào một thư mục. Báo cáo tự xuất hiện. Hết.
 
 </div>
 
@@ -20,9 +20,10 @@
 
 | Vai trò | Việc phải làm | Mất bao lâu | Cần biết code? |
 |---|---|---|---|
-| 👩‍💼 **Kế toán** | Xuất 2 file từ Misa, thả vào thư mục `01_Input` | ~5 phút/tuần | ❌ Không |
+| 👩‍💼 **Kế toán** | Xuất 2 file từ Misa + 1 file AR-AP từ SMS, thả vào `input` | ~5 phút/tuần | ❌ Không |
 | 🧑‍💼 **Sales** | Điền cột *Lý do chưa thu hồi* vào file kết quả | vài phút | ❌ Không |
-| 🧑‍🔧 **Người cài đặt** | Nháy đúp `setup.bat`, một lần duy nhất | ~5 phút | ❌ Không |
+| 🧑‍🔧 **Người cài đặt** | Nháy đúp `1_Khoi_tao_workspace.bat`, một lần duy nhất | ~5 phút | ❌ Không |
+| 👩‍💼 **FIN** | Điền file ghép khách SMS ↔ Misa một lần, bấm `2_Kiem_tra_ghep_khach.bat` | ~30 phút, 1 lần | ❌ Không |
 | 🤖 **Tool** | Đọc file, tính tuổi nợ, điền mẫu chuẩn, nhớ cho tuần sau | 2 giây | — |
 
 > 💡 Trước đây bước "tính tuổi nợ và điền bảng" mất vài tiếng mỗi tuần và phải nhớ
@@ -47,7 +48,7 @@
    └──────────────────┘           ╚══════════╤═══════════╝
             │                                │
             ▼                                ▼
-    📁 01_Input/                   1️⃣  Đọc kỳ trong file
+    📁 input/                      1️⃣  Đọc kỳ trong file
     (thả file vào đây)                 hai file lệch kỳ → dừng, báo lỗi
                                    2️⃣  Danh sách khách + cột Total
                                        ← file Tổng hợp (số tiền đúng)
@@ -59,9 +60,9 @@
                                        tổng bảng = tổng Misa
                                                 │
                                                 ▼
-                                   📁 02_Output/  🎉 file báo cáo tuần
-                                   📁 so-ghi/     🧠 nhớ cho tuần sau
-                                   📄 01_Input/   ✅ file cũ đổi tên [DONE]
+                                   📂 thư mục gốc 🎉 file báo cáo tuần
+                                                  🧠 tuần sau tool đọc lại
+                                   📄 input/      ✅ file cũ đổi tên [DONE]
 ```
 
 ---
@@ -69,20 +70,21 @@
 ## 📁 Thư mục làm việc
 
 Lúc cài đặt, bạn chọn **thư mục đích** — đặt ở OneDrive, ổ D, ổ mạng đều được.
-Tool tự tạo đủ các ngăn bên trong:
+Bên trong chỉ có 2 ngăn cho người dùng:
 
 ```
 📂 Cong-No-Workspace/
-   ├── 📥 01_Input/    ← 👩‍💼 kế toán thả 2 file Misa vào đây
-   ├── 📤 02_Output/   ← 🎉 báo cáo tuần xuất hiện ở đây
-   ├── ✍️  03_BanTay/   ← bản kế toán tự làm, khi cần đối chiếu
-   ├── 🧠 so-ghi/      ← trí nhớ của tool, đừng xoá
-   ├── 🗃️  luu-tru/     ← bản cũ
-   └── 📜 log/         ← nhật ký mỗi lần chạy
+   ├── 📊 2026_W40_Bang_cong_no_tuan_....xlsx   ← 🎉 báo cáo tuần nằm ngay ở đây
+   ├── 📊 w39 final.xlsx                         ← lần đầu: bản final gần nhất của KTT
+   ├── 📥 input/    ← 👩‍💼 mỗi tuần thả 2 file Misa + 1 file SMS vào đây
+   └── 🔗 sample/   ← file ghép khách SMS ↔ Misa (FIN điền 1 lần) + file KIEM_TRA
 ```
 
-> ⚠️ **Đừng xoá thư mục `so-ghi/`.** Đó là chỗ tool nhớ tuần trước khách nợ bao
-> nhiêu và mỗi khoản nợ từ ngày nào. Mất nó thì tuần sau tool phải đoán lại từ đầu.
+> 🔁 **Tuần sau tool tự đọc báo cáo tuần trước nằm ở đây** để biết nợ cũ bao nhiêu tuổi.
+> Kế toán sửa tay thẳng vào file báo cáo (lý do, credit term, nhóm tuổi) thì tuần sau
+> tool tính tiếp theo bản đã sửa. Đừng xoá báo cáo tuần gần nhất.
+>
+> Tool còn một ngăn ẩn `_tool/` (trí nhớ, nhật ký). Không cần mở, đừng xoá.
 
 ---
 
@@ -90,13 +92,27 @@ Tool tự tạo đủ các ngăn bên trong:
 
 ### 👩‍💼 Kế toán — mỗi tuần
 
-1. Xuất từ Misa 2 file, **cùng một kỳ**:
-   - *Tổng hợp công nợ phải thu khách hàng* — kỳ từ thứ Bảy đến thứ Sáu
-   - *Phân tích công nợ phải thu theo tuổi nợ* — đến ngày thứ Bảy
-2. Thả cả 2 file vào `📥 01_Input`. Tên file là gì cũng được, kể cả Windows tự
-   thêm `(1)`, `(2)` — tool đọc ngày bên trong file, không nhìn tên.
-3. Chờ tối đa 15 phút. Báo cáo xuất hiện trong `📤 02_Output`, hai file đầu vào
-   được đổi tên thành `[DONE] ...` cho biết đã xử lý xong.
+1. Xuất **3 file, cùng một kỳ**:
+   - Misa: *Tổng hợp công nợ phải thu khách hàng* — kỳ từ thứ Bảy đến thứ Sáu
+   - Misa: *Phân tích công nợ phải thu theo tuổi nợ* — đến ngày thứ Bảy
+   - SMS: báo cáo *AR-AP* (có cột Partner Code, File/Job No., ETD, ETA, A/R remain)
+2. Thả cả 3 file vào `📥 input`. Tên file là gì cũng được — tool đọc bên trong file.
+3. Chờ tối đa 15 phút, hoặc nháy đúp `3_Chay_ngay.bat`. Báo cáo xuất hiện trong
+   thư mục gốc, ba file đầu vào được đổi tên thành `[DONE] ...`.
+4. Kế toán trưởng sửa thẳng vào file báo cáo ở thư mục gốc — tuần sau tool tính
+   tiếp theo bản đã sửa (người thắng máy).
+
+> ⏳ Thả 2 file Misa mà chưa có file SMS: tool chờ 2 giờ rồi mới chạy theo luật cũ.
+
+### 🧮 Tool ghép 3 nguồn thế nào
+
+```
+Tiền mỗi khách   ← Misa Tổng hợp (luôn luôn)
+Tuổi từng job    ← SMS: ngày ETD/ETA + credit term
+Nợ cũ ngoài SMS  ← báo cáo tuần trước ở thư mục gốc, cộng thêm ngày đã trôi
+Khó đòi          ← file ghép khách, luôn ở nhóm 120+
+SMS > Misa       ← khách đã trả mà SMS quên gạch: bỏ job cũ nhất, liệt kê để FIN ấn paid
+```
 
 > 🗂️ Thả nhiều tuần cùng lúc cũng được — tool ghép từng cặp cùng kỳ rồi chạy
 > lần lượt từ tuần cũ nhất, mỗi tuần một file kết quả.
@@ -111,7 +127,7 @@ Tool tự tạo đủ các ngăn bên trong:
 | 🟨 Vàng | Máy suy ra từ sổ ghi, nên ngó qua |
 | 🟥 Đỏ | Khách mới, hoặc ngoại lệ do kế toán khai — nên xem kỹ |
 
-**Sheet `Cần xem lại`** — mở phần đầu trước, có sẵn bảng đối chiếu:
+**Sheet `Review`** — mở phần đầu trước, có sẵn bảng đối chiếu:
 
 ```
 Tổng bảng báo cáo này                    1.635.150.000   ✅ phải bằng dòng dưới
@@ -132,17 +148,17 @@ Nợ trong hạn trên báo cáo                  426.400.000
 ## 🚀 Cài đặt — một lần duy nhất
 
 ```
-1️⃣  Cài Python từ python.org      ⚠️ nhớ tick "Add Python to PATH"
-2️⃣  Nháy đúp setup.bat            wizard hỏi thư mục đích, bạn gõ số để chọn
-3️⃣  Nạp trạng thái ban đầu        từ báo cáo tuần gần nhất làm tay
+1️⃣  Cài Python từ python.org            ⚠️ nhớ tick "Add Python to PATH"
+2️⃣  Nháy đúp 1_Khoi_tao_workspace.bat   chọn thư mục đích, tool tạo đủ các ngăn
+3️⃣  Bỏ file ghép khách (FIN đã điền)    vào sample
+    Bỏ bản final gần nhất (KTT duyệt)   vào thư mục gốc — chỉ lần đầu
+4️⃣  Nháy đúp 2_Kiem_tra_ghep_khach.bat  Excel mở file KIEM_TRA: dòng cần sửa, khách mới chưa ghép,
+                                         và chạy thử từng khách để FIN soát
 ```
 
-```bat
-python runner.py --nap-bao-cao "2026_W38_Bang_cong_no_tuan_....xlsx" --ngay-chot 2026-09-19
-```
-
-Wizard tự dò các thư mục OneDrive trên máy, tự tạo các ngăn, tự cài thư viện,
-tự đăng ký lịch chạy nền **15 phút một lần** vào Task Scheduler.
+Nút 1 tự cài thư viện, tự đăng ký lịch chạy nền **15 phút một lần** vào Task Scheduler.
+Khi có khách mới, nút 2 liệt kê sẵn đúng khuôn cột của file ghép khách — FIN chép dòng
+sang, điền ô vàng, lưu lại là xong.
 
 ### 🏷️ Khai những thứ file Misa không có — khai một lần, tool nhớ mãi
 
@@ -156,7 +172,7 @@ python runner.py --ngoai-le "BSF LLC" --nhom "1 - 30" --vi-sao "lo tau chim, xua
 :: chờ ký biên bản bù trừ công nợ hai chiều nên để ở nợ trong hạn
 python runner.py --ngoai-le "AHC LOGISTICS(XIAMEN) CO.,LTD" --nhom "Current" --vi-sao "cho ky bien ban bu tru"
 
-:: nợ ảo do lỗi xuất hoá đơn, loại khỏi bảng nhưng vẫn ghi ở sheet Cần xem lại
+:: nợ ảo do lỗi xuất hoá đơn, loại khỏi bảng nhưng vẫn ghi ở sheet Review
 python runner.py --bo-qua "OPTIMALOG LLC" --vi-sao "no ao do loi xuat hoa don tien coc"
 python runner.py --nhan-lai "OPTIMALOG LLC"      :: khi hết chuyện
 ```
@@ -176,7 +192,7 @@ schtasks /query  /tn "Bao cao cong no tuan"
 ## ❓ Hỏng thì làm gì
 
 > 🛟 **Nguyên tắc: tool không bao giờ chặn không ra báo cáo.** Chỗ nào không chắc
-> thì vẫn ra file, tô màu và ghi vào sheet *Cần xem lại*.
+> thì vẫn ra file, tô màu và ghi vào sheet *Review*.
 
 | Hiện tượng | Nghĩa là | Làm gì |
 |---|---|---|
@@ -186,9 +202,9 @@ schtasks /query  /tn "Bao cao cong no tuan"
 | 😴 Không thấy file kết quả | Máy tắt, hoặc lịch chạy chưa gọi | Task Scheduler → *Bao cao cong no tuan* → Run |
 | 🤐 Bấm Run mà không có gì xảy ra | Mất `settings.json` nên tool không biết thư mục đích | `python runner.py --xem-cau-hinh`, rồi `--dat-thu-muc` |
 | 🔒 Nhật ký ghi *"Tạm hoãn kỳ này"* | File kết quả đang mở trong Excel | Đóng file, lần chạy sau tool làm tiếp |
-| 🆘 Tool hỏng cả tuần | | Kế toán làm tay như cũ, thả bản làm tay vào `03_BanTay`; tool coi bản của người là đúng và chạy tiếp từ đó |
+| 🆘 Tool hỏng cả tuần | | Kế toán làm tay như cũ, thả bản làm tay vào thư mục gốc; tool coi bản của người là đúng và chạy tiếp từ đó |
 
-📜 Nhật ký mỗi lần chạy: `log/runner.log` **trong thư mục đích**.
+📜 Nhật ký mỗi lần chạy: `_tool/runner.log` **trong thư mục đích** (ngăn ẩn).
 
 ---
 
@@ -197,7 +213,7 @@ schtasks /query  /tn "Bao cao cong no tuan"
 - 📅 **Tuổi nợ tính theo ngày thật**, không theo số lần tool chạy. Nghỉ ba tuần
   rồi chạy lại vẫn ra tuổi đúng cho khách cũ.
 - 💰 **Tiền luôn lấy theo file Tổng hợp.** Hai file Misa mâu thuẫn thì tiền thắng,
-  và khách gây lệch được liệt kê trong sheet *Cần xem lại*.
+  và khách gây lệch được liệt kê trong sheet *Review*.
 - 🕰️ **Số trên Misa đổi theo thời điểm xuất** — ghi nhận lùi, hoá đơn thay thế.
   Vì vậy chỉ so báo cáo của tool với bản làm tay khi cả hai dùng **cùng một cặp
   file**. Báo cáo có ghi tên và giờ sửa của hai file nguồn để đối chiếu sau này.
@@ -211,21 +227,21 @@ schtasks /query  /tn "Bao cao cong no tuan"
 ```
 weekly-report/            chỉ chứa mã nguồn, không có dữ liệu chạy
 ├── runner.py             điểm chạy, cũng là chỗ nhận mọi lệnh
-├── wr/                   misa · soghi · tinhtoan · baocao · caidat · thuonghieu
+├── wr/                   misa · ghep · soghi · tinhtoan · baocao · kiemtra · caidat · thuonghieu
 ├── tools/                make_template · setup_wizard
-├── tests/                29 phép thử + so_sanh.py để đối chiếu bản tay
+├── tests/                47 phép thử + so_sanh.py để đối chiếu bản tay
 ├── template/             mẫu chuẩn, sheet Receivable trắng
 └── handoff/              RULES · STATE · MAP · phiếu việc · tài liệu
 ```
 
 > 🔐 Thư mục `handoff/docs/fixtures/` chứa dữ liệu công nợ thật để chạy phép thử
 > đối chiếu. Nó **không đi theo repo**. Không có nó thì 20 phép thử tự bỏ qua,
-> 9 phép thử còn lại vẫn chạy. Chép dữ liệu vào đó là 29 phép thử chạy lại đủ.
+> 27 phép thử còn lại (dữ liệu giả) vẫn chạy. Chép dữ liệu vào đó là 47 phép thử chạy lại đủ.
 
 ```bat
-python -m pytest                       :: 29 phép thử (20 cần dữ liệu thật)
+python -m pytest                       :: 47 phép thử (20 cần dữ liệu thật)
 python tools/make_template.py          :: dựng lại mẫu chuẩn
-python tests/tao_du_lieu_gia.py "<01_Input>"   :: sinh dữ liệu giả để thử
+python tests/tao_du_lieu_gia.py "<input>"   :: sinh dữ liệu giả để thử
 ```
 
 📖 Luật tính số: `handoff/docs/SPEC-logic-bao-cao-tuan.md`

@@ -19,12 +19,18 @@ class ChuaDatThuMuc(Exception):
 
 MAC_DINH = {
     "workspace": "",                 # thư mục làm việc trên OneDrive
-    "thu_muc_vao": "01_Input",
-    "thu_muc_ra": "02_Output",
-    "thu_muc_ban_tay": "03_BanTay",
-    "thu_muc_so_ghi": "so-ghi",
-    "thu_muc_luu_tru": "luu-tru",
-    "thu_muc_log": "log",
+    # Bố cục Chairman chốt 2026-10-06: gốc chứa báo cáo tuần, chỉ 2 ngăn con cho người
+    #   <gốc>/          báo cáo tuần tool sinh ra; tuần sau tool đọc lại bản mới nhất ở đây
+    #   <gốc>/input/    3 file mỗi tuần (2 Misa + 1 SMS)
+    #   <gốc>/sample/   file ghép khách SMS ↔ Misa và file KIEM_TRA
+    #   <gốc>/_tool/    trí nhớ và nhật ký của tool (ẩn trên Windows), người dùng không đụng
+    "thu_muc_vao": "input",
+    "thu_muc_ra": "",
+    "thu_muc_ban_tay": "",
+    "thu_muc_ghep": "sample",
+    "thu_muc_so_ghi": "_tool",
+    "thu_muc_luu_tru": "_tool/luu-tru",
+    "thu_muc_log": "_tool",
     "credit_term_mac_dinh": 30,
 }
 
@@ -44,7 +50,7 @@ class CauHinh:
             )
         if not ws:
             raise ChuaDatThuMuc(
-                f"Máy {ten_may()} chưa đặt thư mục đích. Chạy setup.bat một lần, hoặc: "
+                f"Máy {ten_may()} chưa đặt thư mục đích. Chạy 1_Khoi_tao_workspace.bat một lần, hoặc: "
                 'python runner.py --dat-thu-muc "<đường dẫn>"'
             )
         self.workspace = Path(ws)
@@ -61,6 +67,8 @@ class CauHinh:
     @property
     def ban_tay(self) -> Path: return self._d("thu_muc_ban_tay")
     @property
+    def ghep(self) -> Path: return self._d("thu_muc_ghep")
+    @property
     def so_ghi(self) -> Path: return self._d("thu_muc_so_ghi") / "so-ghi.json"
     @property
     def luu_tru(self) -> Path: return self._d("thu_muc_luu_tru")
@@ -70,11 +78,23 @@ class CauHinh:
     def mau_chuan(self) -> Path: return GOC / "template" / "Bang_cong_no_MAU_CHUAN.xlsx"
 
     def cac_thu_muc(self):
-        return [self.vao, self.ra, self.ban_tay, self.so_ghi.parent, self.luu_tru, self.log.parent]
+        ra = []
+        for d in [self.ra, self.vao, self.ghep, self.ban_tay, self.so_ghi.parent, self.log.parent,
+                  self.luu_tru]:
+            if d not in ra:
+                ra.append(d)
+        return ra
 
     def tao_cac_thu_muc(self):
         for d in self.cac_thu_muc():
             d.mkdir(parents=True, exist_ok=True)
+        an = self.workspace / "_tool"
+        if os.name == "nt" and an.is_dir():
+            try:   # ẩn ngăn của tool để FIN chỉ thấy input/ và sample/
+                import subprocess
+                subprocess.run(["attrib", "+h", str(an)], check=False, capture_output=True)
+            except OSError:
+                pass
         return self.cac_thu_muc()
 
 

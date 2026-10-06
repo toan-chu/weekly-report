@@ -20,16 +20,16 @@ DICH = pathlib.Path(__file__).resolve().parents[1] / "template" / "Bang_cong_no_
 def main() -> None:
     wb = Workbook()
     ws = wb.active
-    ws.title = "Receivable"
+    ws.title = th.SHEET_BANG
 
-    ws["A1"] = "TRUSTANA VIỆT NAM"
+    ws["A1"] = th.CONG_TY
     ws["A1"].font = Font(name=th.PHONG_TIEU_DE, size=14, bold=True, color=th.TIM)
-    ws["A2"] = "Debtors and Creditors Ageing Reports"
+    ws["A2"] = th.TEN_BAO_CAO
     ws["A2"].font = Font(name=th.PHONG_TIEU_DE, size=11, bold=True, color=th.CAM)
     ws["A3"] = ""  # tool điền: At 12 Sep 2026
     ws["A3"].font = Font(name=th.PHONG_NOI_DUNG, size=10, italic=True)
-    ws["A5"] = "Accounts receivable"
-    ws["A5"].font = Font(name=th.PHONG_TIEU_DE, size=11, bold=True, color=th.TIM)
+    ws["A4"] = th.TEN_BANG
+    ws["A4"].font = Font(name=th.PHONG_TIEU_DE, size=11, bold=True, color=th.TIM)
 
     vien = Side(style="thin", color="BFBFBF")
     for i, (ten_cot, loai, rong) in enumerate(th.COT, start=1):
