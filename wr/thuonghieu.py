@@ -12,8 +12,8 @@ DO_CANH_BAO = "FCE4E4"
 # Sửa chữ ở đây là đủ, tool ghi lại các dòng này mỗi lần chạy.
 CONG_TY = "TRUSTANA VIETNAM"
 TEN_BAO_CAO = "Debtors and Creditors Ageing Reports"
-TEN_BANG = "Accounts receivable"
-SHEET_BANG = "Receivable"
+TEN_BANG = "Accounts receivables"
+SHEET_BANG = "Receivables"
 SHEET_REVIEW = "Review"
 
 PHONG_TIEU_DE = "Roboto"   # heading
