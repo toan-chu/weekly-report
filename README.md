@@ -6,7 +6,7 @@
 
 [![Trustana](https://img.shields.io/badge/TRUSTANA-4d148c?style=for-the-badge&logoColor=white)](#)
 [![Phiên bản](https://img.shields.io/badge/phiên%20bản-0.5-ff6200?style=for-the-badge)](#)
-[![Phép thử](https://img.shields.io/badge/phép%20thử-77-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
+[![Phép thử](https://img.shields.io/badge/phép%20thử-78-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-4d148c?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#)
 
@@ -202,6 +202,7 @@ python runner.py --nhan-lai "OPTIMALOG LLC"
 |---|---|---|
 | 🟥 File đầu vào bị đổi thành `[LOI] ...` | Dữ liệu không hợp lệ | Đọc file `[LOI] ... doc-vi-sao-hong.txt` cùng thư mục, sửa rồi bỏ chữ `[LOI]` |
 | ⏳ Đã thả file mà chưa có báo cáo | Đang chờ file còn thiếu trong 6 file (tối đa 2 giờ) | Thả nốt file còn thiếu; nhật ký ghi tên file đang chờ |
+| 📅 File Chi tiết 131 xuất tới cuối tháng, Tổng hợp tới thứ Sáu | Bình thường (FIN W41) | Không cần làm gì: tool tự bỏ phần sau ngày cuối kỳ, nhật ký ghi số bút toán đã bỏ |
 | 🟧 Đối chiếu ghi *"hai file xuất khác lúc"* | Misa sửa hoá đơn giữa hai lần xuất | Xuất lại cả 6 file cùng lúc |
 | 🪟 Lịch chạy vẫn bật cửa sổ đen | Máy cài trước 09/10 | Lần chạy kế tiếp tool tự sửa; nếu vẫn bật, chạy lại `1_Khoi_tao_workspace.bat` |
 | ⚠️ Review ghi *"Chi tiết 131 và Tổng hợp 131 lệch"* | Hai file xuất khác thời điểm | Xuất lại cả hai cùng lúc |
@@ -219,14 +220,14 @@ weekly-report/            chỉ chứa mã nguồn, không có dữ liệu chạ
 ├── runner.py             điểm chạy, cũng là chỗ nhận mọi lệnh
 ├── wr/                   misa · chitiet · banhang · tindung · ghifull · ghep · soghi · tinhtoan · baocao · kiemtra
 ├── tools/                make_template · setup_wizard
-├── tests/                77 phép thử (20 cần dữ liệu thật trong handoff/docs/fixtures/)
+├── tests/                78 phép thử (20 cần dữ liệu thật trong handoff/docs/fixtures/)
 ├── dashboard/            src + build.py → Credit_Dashboard.html (tool chép vào workspace)
 ├── template/             mẫu chuẩn sheet Receivables
 └── handoff/              RULES · STATE · MAP · phiếu việc · tài liệu
 ```
 
 ```bat
-python -m pytest                       :: 77 phép thử
+python -m pytest                       :: 78 phép thử
 python runner.py --tong-hop A.xlsx --chi-tiet B.xlsx --phai-tra C.xlsx --sms D.xlsx ^
                  --ban-hang E.xlsx --so-chi-tiet F.xlsx --ra <thư mục>
 python dashboard/build.py              :: sửa dashboard/src thì dựng lại rồi commit cả file html

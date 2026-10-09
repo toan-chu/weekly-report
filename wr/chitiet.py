@@ -149,6 +149,17 @@ class ChiTiet:
     den_ngay: dt.date
     khach: Dict[str, KhachChiTiet] = field(default_factory=dict)
 
+    def cat_den(self, den: dt.date) -> int:
+        """FIN W41 xuất Chi tiết đến cuối tháng (31/10) còn Tổng hợp đến thứ Sáu (09/10): bỏ mọi bút
+        toán sau ngày cuối kỳ để file dùng được như xuất đúng kỳ. Trả số bút toán đã bỏ."""
+        bo = 0
+        for k in self.khach.values():
+            giu = [b for b in k.but_toan if b.ngay_ht <= den]
+            bo += len(k.but_toan) - len(giu)
+            k.but_toan = giu
+        self.den_ngay = min(self.den_ngay, den)
+        return bo
+
 
 def _ngay(x) -> Optional[dt.date]:
     if isinstance(x, dt.datetime):

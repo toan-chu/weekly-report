@@ -80,13 +80,17 @@ def _tim_dau_vao(thu_muc: Path):
     # v0.4: file Chi tiết 131 cùng ngày cuối kỳ với file Tổng hợp
     ct = None
     if th_doc:
-        for f in sorted(ds_ct, key=lambda f: f.stat().st_mtime, reverse=True):
+        # cùng ngày cuối kỳ; không có thì file xuất tới SAU ngày đó gần nhất (tool tự cắt — FIN W41)
+        ung = []
+        for f in ds_ct:
             try:
-                if chitiet.ky_cua(f)[1] == th_doc[1].den_ngay:
-                    ct = f
-                    break
+                n = chitiet.ky_cua(f)[1]
             except Exception:
                 continue
+            if n >= th_doc[1].den_ngay:
+                ung.append(((n - th_doc[1].den_ngay).days, -f.stat().st_mtime, f))
+        if ung:
+            ct = min(ung, key=lambda x: (x[0], x[1]))[2]
     return th_doc, tn_doc, _moi_nhat(ds_sms), ct
 
 
@@ -224,7 +228,9 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
             f_bh, f_sct = _tim_ban_hang(cfg.vao)
             job_misa = (banhang.doc_job_misa(f_bh, f_sct, [(k.ma, k.ten) for k in tong_hop.dong.values()])
                         if f_bh else None)
-            kq = tindung.tinh_full(tong_hop, chitiet.doc_chi_tiet(f_ct), so, dong_sms, bang,
+            ct_doc = chitiet.doc_chi_tiet(f_ct)
+            ct_doc.cat_den(tong_hop.den_ngay)
+            kq = tindung.tinh_full(tong_hop, ct_doc, so, dong_sms, bang,
                                    job_no_cu=ghep.doc_job_no_cu(cfg.ghep), job_misa=job_misa)
         else:
             kq = tinhtoan.tinh_bang_sms(tong_hop, tn_doc[1], so, dong_sms, bang, tn_doc[1].den_ngay)

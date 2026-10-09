@@ -64,3 +64,11 @@ FIN hỏi GOLDEN GLOBE: Tổng hợp Misa hiện 28tr mà báo cáo 31tr. Soát:
 (hạch toán 18/09, ngày HĐ 08/10) = 28.833.901 → Misa sửa hoá đơn sau khi xuất file Tổng hợp. Không
 phải lỗi tính. Thêm gợi ý: tổng job khớp Chi tiết 131 mà chỉ Tổng hợp lệch → "xuất khác lúc".
 Số tiền job = tiền hoá đơn (Bán hàng); hoá đơn nhiều job tách theo dòng hàng trên Sổ chi tiết.
+
+### 2026-10-09 (tối) — W41 không chạy
+FIN xuất Chi tiết 131 từ 01/01/2022 tới 31/10/2026, Tổng hợp tới 09/10. Tool đòi hai file cùng
+ngày cuối kỳ nên bỏ cả kỳ, nhật ký chỉ ghi "chưa có file Tổng hợp đến 31/10". Sửa: Chi tiết xuất tới
+SAU ngày cuối kỳ thì ghép với Tổng hợp gần nhất và cắt bỏ bút toán sau ngày đó (chạy & nút 2).
+Một file Chi tiết dùng cho nhiều kỳ thì chỉ đổi tên [DONE] sau kỳ cuối. Phép thử mới. Chạy thật 6
+file W41: ra báo cáo W41 (67 khách, 14.468.170.611). Failure: luật "cùng kỳ" quá chặt so với cách
+FIN xuất. Lessons: đầu vào do người xuất tay thì nhận khoảng rộng hơn rồi tự cắt, đừng bắt khớp tuyệt đối.

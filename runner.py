@@ -264,6 +264,10 @@ def chay_full(
     job chưa thanh toán lấy từ Misa, đối chiếu với dư nợ từng khách."""
     th = misa.doc_tong_hop(duong_tong_hop)
     ct = chitiet.doc_chi_tiet(duong_chi_tiet)
+    if ct.den_ngay > th.den_ngay:
+        # FIN hay xuất Chi tiết đến hết tháng: cắt về đúng ngày cuối kỳ, không bắt xuất lại
+        bo = ct.cat_den(th.den_ngay)
+        ghi_log(f"  File Chi tiết 131 xuất tới sau ngày cuối kỳ: đã bỏ {bo} bút toán sau {th.den_ngay:%d/%m/%Y}")
     if ct.den_ngay != th.den_ngay:
         raise LoiDocFile(
             "File Chi tiết và file Tổng hợp phải thu không cùng ngày cuối kỳ, dừng để khỏi ra số sai.\n"
@@ -516,14 +520,27 @@ def quet_thu_muc(cfg: caidat.CauHinh) -> int:
     # v0.4: Tổng hợp 131 + Chi tiết 131 cùng ngày cuối kỳ
     viec = []   # (ngày, loại, các file)
     ct_theo_ngay = {n: f for n, f in sorted(pl["chi-tiet"], key=lambda x: x[1].stat().st_mtime)}
+    da_dung_ct = set()
+
+    def chi_tiet_cho(n):
+        """Chi tiết cùng ngày cuối kỳ; không có thì file Chi tiết xuất tới SAU ngày đó gần nhất
+        (FIN W41: Chi tiết tới 31/10, Tổng hợp tới 09/10 — tool tự cắt)."""
+        if n in ct_theo_ngay:
+            return n
+        sau = [m for m in ct_theo_ngay if m > n]
+        return min(sau) if sau else None
     tra_theo_ngay = {n: f for n, f in sorted(pl["phai-tra"], key=lambda x: x[1].stat().st_mtime)}
     th_cu = []
     for n, f in sorted(pl["tong-hop"]):
-        if n in ct_theo_ngay:
-            viec.append((n, "full", (f, ct_theo_ngay.pop(n), tra_theo_ngay.pop(n, None))))
+        m = chi_tiet_cho(n)
+        if m is not None:
+            da_dung_ct.add(m)
+            viec.append((n, "full", (f, ct_theo_ngay[m], tra_theo_ngay.pop(n, None))))
         else:
             th_cu.append(f)
     for n, f in ct_theo_ngay.items():
+        if n in da_dung_ct:
+            continue
         ghi_log(f"  Bỏ qua {f.name}: chưa có file Tổng hợp phải thu đến ngày {n:%d/%m/%Y} đi kèm")
     for n, f in tra_theo_ngay.items():
         ghi_log(f"  Bỏ qua {f.name}: chưa có file Tổng hợp + Chi tiết phải thu đến ngày {n:%d/%m/%Y} đi kèm")
@@ -596,8 +613,10 @@ def quet_thu_muc(cfg: caidat.CauHinh) -> int:
                 encoding="utf-8",
             )
             continue
+        con_can = {g for _, _, ds2 in viec[i + 1:] for g in ds2 if g}   # một file Chi tiết dùng cho nhiều kỳ
         for f in dung:
-            _doi_ten(f, "[DONE]")
+            if f not in con_can:
+                _doi_ten(f, "[DONE]")
         xong += 1
     return xong
 

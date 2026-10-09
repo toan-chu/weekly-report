@@ -158,3 +158,22 @@ def test_da_co_bang_job_no_cu_ten_khac_thi_khong_tao_them(tmp_path):
     wb.save(tmp_path / "SAMPLE_Tham_chieu_job_no_cu.xlsx")
     assert ghep.co_file_job_no_cu(tmp_path)
     assert not ghep.co_file_job_no_cu(tmp_path / "khong-co")
+
+
+
+def test_chi_tiet_xuat_toi_cuoi_thang_van_chay(ws):
+    """FIN W41: Chi tiết 131 xuất tới 31/10, Tổng hợp tới thứ Sáu — tool cắt về ngày cuối kỳ, không bỏ kỳ."""
+    from test_wr4 import TH40, TRA40, tao_phai_tra
+    from test_wr3 import tao_sms
+    ct = {k: list(v) for k, v in CT40.items()}
+    ct[A].append((D(2026, 10, 5), None, "", "Thu tiền theo HD 00000001", "1121", 0, 100))   # sau kỳ: phải bỏ
+    tao_tong_hop(ws.vao / "a.xlsx", TH40)
+    tao_chi_tiet(ws.vao / "b.xlsx", ct, den=D(2026, 10, 31))
+    tao_phai_tra(ws.vao / "c.xlsx", TRA40)
+    tao_sms(ws.vao / "sms.xlsx", [("Outbound", [("KA", A, "Hằng", "EXSANA26080001", "01/08/2026", None,
+                                                  [("FEE", 100, 1)])])])
+    assert runner.quet_thu_muc(ws) == 1
+    assert all(x.name.startswith("[DONE]") for x in ws.vao.glob("*.xlsx"))
+    rec = openpyxl.load_workbook(next(ws.ra.glob("2026_W40_*.xlsx")))[th.SHEET_BANG]
+    a = next(r for r in rec.iter_rows(min_row=6, values_only=True) if r[1] == "KA")
+    assert a[4] == 100 and a[7] == 100, "phiếu thu 05/10 nằm sau kỳ: HĐ 00000001 vẫn còn nợ ở 31 - 60"
