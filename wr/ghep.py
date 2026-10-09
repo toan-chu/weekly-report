@@ -301,6 +301,24 @@ COT_JOB_NO_CU = ["Mã khách Misa", "Tên khách", "Số hoá đơn", "Ngày ho�
                  "Job (SMS)", "Sales", "Ghi chú"]
 
 
+def co_file_job_no_cu(thu_muc) -> bool:
+    """Trong sample/ đã có file nào mang sheet "Job cho nợ cũ" chưa (tên file nào cũng được)."""
+    if not thu_muc or not Path(thu_muc).is_dir():
+        return False
+    for f in Path(thu_muc).glob("*.xlsx"):
+        if f.name.startswith(("~$", "KIEM_TRA")):
+            continue
+        try:
+            wb = openpyxl.load_workbook(f, read_only=True)
+            co = SHEET_JOB_NO_CU in wb.sheetnames
+            wb.close()
+        except Exception:
+            continue
+        if co:
+            return True
+    return False
+
+
 def doc_job_no_cu(thu_muc) -> Dict[str, List[Tuple[int, str, str]]]:
     """Đọc mọi file trong sample/ có sheet "Job cho nợ cũ". Trả {MÃ KHÁCH: [(số HĐ, job, sales)]}.
     Dòng chưa điền Job lẫn Sales thì bỏ qua (FIN chưa tìm ra)."""

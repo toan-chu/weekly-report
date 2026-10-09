@@ -6,7 +6,7 @@
 
 [![Trustana](https://img.shields.io/badge/TRUSTANA-4d148c?style=for-the-badge&logoColor=white)](#)
 [![Phiên bản](https://img.shields.io/badge/phiên%20bản-0.5-ff6200?style=for-the-badge)](#)
-[![Phép thử](https://img.shields.io/badge/phép%20thử-76-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
+[![Phép thử](https://img.shields.io/badge/phép%20thử-77-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-4d148c?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#)
 
@@ -72,7 +72,7 @@
 | File | Ai tạo | Ý nghĩa | FIN làm gì |
 |---|---|---|---|
 | `SAMPLE_ghep-khach-SMS-Misa_FIN-da-dien.xlsx` | FIN | Mã khách bên SMS ứng với mã khách nào bên Misa (tên hai bên khác nhau) | Có khách mới thì thêm dòng (file KIEM_TRA chỉ ra dòng nào) |
-| `Tham_chieu_job_no_cu.xlsx` | Tool, lần đầu bấm nút 2 | Hoá đơn **trước năm nay** còn nợ mà Misa không cho biết job | Điền cột Job, Sales (ô vàng) một lần |
+| `Tham_chieu_job_no_cu.xlsx` (tên nào cũng được, tool nhận theo nội dung) | Tool, lần đầu bấm nút 2 — gói W40 có sẵn | Hoá đơn **trước năm nay** còn nợ mà Misa không cho biết job | Điền cột Job, Sales (ô vàng) một lần |
 | `KIEM_TRA_ghep_khach_<ngày giờ>.xlsx` | Tool, mỗi lần bấm nút 2 | Kết quả kiểm tra: khách mới chưa ghép, dòng ghép sai, nợ cũ chưa có job | Chỉ đọc; sửa ở hai file trên |
 
 > 🔁 Tuần sau tool đọc lại báo cáo tuần trước ở thư mục gốc để lấy lý do trễ hạn, credit term
@@ -169,6 +169,7 @@ Gói `sample_w40` (zip) có đủ mọi file để chạy lại tuần 40, làm 
 |---|---|---|
 | `W39_bao-cao-final_nguoi-lam.xlsx` | thư mục gốc | Bản final W39 kế toán trưởng duyệt — mốc "tuần trước" |
 | `SAMPLE_ghep-khach-SMS-Misa_FIN-da-dien.xlsx` | `sample/` | File ghép khách FIN đã điền (đã sửa TTND VIETNGA → KH00416) |
+| `SAMPLE_Tham_chieu_job_no_cu.xlsx` | `sample/` | Bảng job nợ cũ tool đã dựng sẵn từ số W40 (1 hoá đơn: Minh Khôi 32tr) — FIN điền Job, Sales ở ô vàng |
 | `W40_misa-tong-hop-phai-thu-131.xlsx` | `input/` | File 1 tuần 40 |
 | `W40_misa-chi-tiet-phai-thu-131_tu-2022.xlsx` | `input/` | File 2 tuần 40 |
 | `W40_misa-tong-hop-phai-tra-331.xlsx` | `input/` | File 3 tuần 40 |
@@ -176,8 +177,10 @@ Gói `sample_w40` (zip) có đủ mọi file để chạy lại tuần 40, làm 
 | `W40_misa-so-chi-tiet-131_tu-dau-nam.xlsx` | `input/` | File 5 tuần 40 |
 | `W40_sms-AR-AP.xlsx` | `input/` | File 6 tuần 40 |
 
-Thứ tự: cài đặt (bước 1–2 ở trên) → giải nén, bỏ file đúng chỗ → Task Scheduler → **Run** → có báo
-cáo W40 ở thư mục gốc → bấm `2_Kiem_tra_ghep_khach.bat` → điền `Tham_chieu_job_no_cu.xlsx`.
+Thứ tự: cài đặt (bước 1–2 ở trên) → giải nén, bỏ file đúng chỗ → điền ô vàng trong
+`SAMPLE_Tham_chieu_job_no_cu.xlsx` (làm sau cũng được) → Task Scheduler → **Run** → có báo cáo W40 ở
+thư mục gốc. Bảng job nợ cũ không nằm trong git vì chứa số liệu khách; máy nào chưa có thì bấm
+`2_Kiem_tra_ghep_khach.bat` là tool tự tạo.
 Từ tuần 41: chỉ thả 6 file mới vào `input/`.
 
 ### 🏷️ Khai những thứ file Misa không có — khai một lần, tool nhớ mãi
@@ -216,14 +219,14 @@ weekly-report/            chỉ chứa mã nguồn, không có dữ liệu chạ
 ├── runner.py             điểm chạy, cũng là chỗ nhận mọi lệnh
 ├── wr/                   misa · chitiet · banhang · tindung · ghifull · ghep · soghi · tinhtoan · baocao · kiemtra
 ├── tools/                make_template · setup_wizard
-├── tests/                76 phép thử (20 cần dữ liệu thật trong handoff/docs/fixtures/)
+├── tests/                77 phép thử (20 cần dữ liệu thật trong handoff/docs/fixtures/)
 ├── dashboard/            src + build.py → Credit_Dashboard.html (tool chép vào workspace)
 ├── template/             mẫu chuẩn sheet Receivables
 └── handoff/              RULES · STATE · MAP · phiếu việc · tài liệu
 ```
 
 ```bat
-python -m pytest                       :: 76 phép thử
+python -m pytest                       :: 77 phép thử
 python runner.py --tong-hop A.xlsx --chi-tiet B.xlsx --phai-tra C.xlsx --sms D.xlsx ^
                  --ban-hang E.xlsx --so-chi-tiet F.xlsx --ra <thư mục>
 python dashboard/build.py              :: sửa dashboard/src thì dựng lại rồi commit cả file html

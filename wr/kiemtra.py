@@ -295,7 +295,7 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
     if not dong_nc:
         _ghi(nc, 2, ["", "Không có nợ cũ nào thiếu job"])
     tep_tc = Path(cfg.ghep) / "Tham_chieu_job_no_cu.xlsx"
-    if dong_nc and not tep_tc.exists():
+    if dong_nc and not ghep.co_file_job_no_cu(cfg.ghep):     # gói W40 có sẵn SAMPLE_Tham_chieu_... thì thôi
         tc = openpyxl.Workbook()
         w = tc.active
         w.title = ghep.SHEET_JOB_NO_CU

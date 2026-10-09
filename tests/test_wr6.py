@@ -149,3 +149,12 @@ def test_payable_dung_mau_fin(ws):
     assert r[-1][3] == r[-1][4] == 650
     cash = " ".join(str(c) for x in wb[th.SHEET_CASH].iter_rows(values_only=True) for c in x if c)
     assert "VENDOR TRẢ XONG" in cash, "tiền đã trả vendor vẫn ở Cash Flow"
+
+
+def test_da_co_bang_job_no_cu_ten_khac_thi_khong_tao_them(tmp_path):
+    from wr import ghep
+    wb = openpyxl.Workbook()
+    wb.active.title = ghep.SHEET_JOB_NO_CU
+    wb.save(tmp_path / "SAMPLE_Tham_chieu_job_no_cu.xlsx")
+    assert ghep.co_file_job_no_cu(tmp_path)
+    assert not ghep.co_file_job_no_cu(tmp_path / "khong-co")
