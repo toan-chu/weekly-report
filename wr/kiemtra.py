@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Nút 2_Kiem_tra_ghep_khach: đối chiếu file ghép khách FIN điền với 2 file Misa
+"""Nút 2_Kiem_tra_ghep_khach: đối chiếu file ghép khách FIN điền với file Misa
 và file SMS mới nhất trong thư mục input, rồi sinh một file KIEM_TRA cho FIN xem.
 
 Không sửa file của FIN. Khách mới chưa ghép được liệt kê đúng khuôn cột của file
@@ -15,7 +15,7 @@ import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
-from . import ghep, misa
+from . import banhang, chitiet, ghep, misa, tindung
 from . import soghi as sg
 from . import thuonghieu as th
 from . import tinhtoan
@@ -32,10 +32,21 @@ def _moi_nhat(ds: List[Path]) -> Optional[Path]:
     return max(ds, key=lambda f: f.stat().st_mtime) if ds else None
 
 
+def _tim_ban_hang(thu_muc: Path):
+    """v0.5: file Bán hàng và Sổ chi tiết TK131 mới nhất (kể cả file đã [DONE])."""
+    ds = {"ban-hang": [], "so-chi-tiet": []}
+    for f in Path(thu_muc).glob("*.xlsx"):
+        if not f.name.startswith("~$"):
+            loai = misa.nhan_dang(f)
+            if loai in ds:
+                ds[loai].append(f)
+    return _moi_nhat(ds["ban-hang"]), _moi_nhat(ds["so-chi-tiet"])
+
+
 def _tim_dau_vao(thu_muc: Path):
-    """2 file Misa cùng kỳ mới nhất và file SMS mới nhất, kể cả file đã [DONE]."""
+    """File Misa cùng kỳ mới nhất (Tổng hợp + Chi tiết, hoặc Tuổi nợ cũ) và file SMS mới nhất, kể cả file đã [DONE]."""
     tat_ca = [f for f in Path(thu_muc).glob("*.xlsx") if not f.name.startswith("~$")]
-    ds_th, ds_tn, ds_sms = [], [], []
+    ds_th, ds_tn, ds_sms, ds_ct = [], [], [], []
     for f in tat_ca:
         if ghep.la_file_sms(f):
             ds_sms.append(f)
@@ -45,6 +56,8 @@ def _tim_dau_vao(thu_muc: Path):
             ds_th.append(f)
         elif loai == "tuoi-no":
             ds_tn.append(f)
+        elif loai == "chi-tiet":
+            ds_ct.append(f)
     th_doc = tn_doc = None
     for f in sorted(ds_th, key=lambda f: f.stat().st_mtime, reverse=True):
         try:
@@ -64,7 +77,17 @@ def _tim_dau_vao(thu_muc: Path):
     if th_doc is None and ds_th:
         f = _moi_nhat(ds_th)
         th_doc = (f, misa.doc_tong_hop(f))
-    return th_doc, tn_doc, _moi_nhat(ds_sms)
+    # v0.4: file Chi tiết 131 cùng ngày cuối kỳ với file Tổng hợp
+    ct = None
+    if th_doc:
+        for f in sorted(ds_ct, key=lambda f: f.stat().st_mtime, reverse=True):
+            try:
+                if chitiet.ky_cua(f)[1] == th_doc[1].den_ngay:
+                    ct = f
+                    break
+            except Exception:
+                continue
+    return th_doc, tn_doc, _moi_nhat(ds_sms), ct
 
 
 def _tieu_de(ws, cot, rong):
@@ -94,7 +117,7 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
         ghi_log(f"Chưa có file ghép khách trong {cfg.ghep}. Bỏ file FIN đã điền vào đó rồi bấm lại.")
         return None
     bang = ghep.doc_bang_ghep(f_ghep)
-    th_doc, tn_doc, f_sms = _tim_dau_vao(cfg.vao)
+    th_doc, tn_doc, f_sms, f_ct = _tim_dau_vao(cfg.vao)
     tong_hop = th_doc[1] if th_doc else None
     dong_sms = ghep.doc_sms(f_sms) if f_sms else []
 
@@ -107,7 +130,7 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
         ("KIỂM TRA FILE GHÉP KHÁCH", f"{dt.datetime.now():%d/%m/%Y %H:%M}"),
         ("File ghép khách đang dùng", f_ghep.name),
         ("Misa Tổng hợp dùng để đối chiếu", th_doc[0].name if th_doc else "(chưa có trong input)"),
-        ("Misa Tuổi nợ", tn_doc[0].name if tn_doc else "(chưa có cùng kỳ)"),
+        ("Misa Chi tiết 131", f_ct.name if f_ct else "(chưa có cùng kỳ)"),
         ("File SMS", f_sms.name if f_sms else "(chưa có trong input)"),
         ("Báo cáo tuần trước tool đã đọc", ", ".join(sorted(so.da_nap)) or "(chưa có — lần đầu bỏ bản "
          "final gần nhất của kế toán trưởng vào thư mục gốc)"),
@@ -195,8 +218,16 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
     dc = wb.create_sheet("Đối chiếu từng khách")
     _tieu_de(dc, ["Mã Misa", "Khách hàng", "Misa (VND)", "SMS ghép được", "Cách tính tuổi"]
              + sg.TEN_NHOM + ["Cần xem lại"], [14, 40, 16, 16, 14] + [14] * 6 + [70])
-    if tong_hop and tn_doc:
-        kq = tinhtoan.tinh_bang_sms(tong_hop, tn_doc[1], so, dong_sms, bang, tn_doc[1].den_ngay)
+    job_misa = None
+    if tong_hop and (f_ct or tn_doc):
+        if f_ct:
+            f_bh, f_sct = _tim_ban_hang(cfg.vao)
+            job_misa = (banhang.doc_job_misa(f_bh, f_sct, [(k.ma, k.ten) for k in tong_hop.dong.values()])
+                        if f_bh else None)
+            kq = tindung.tinh_full(tong_hop, chitiet.doc_chi_tiet(f_ct), so, dong_sms, bang,
+                                   job_no_cu=ghep.doc_job_no_cu(cfg.ghep), job_misa=job_misa)
+        else:
+            kq = tinhtoan.tinh_bang_sms(tong_hop, tn_doc[1], so, dong_sms, bang, tn_doc[1].den_ngay)
         theo_ma = {k.ma.upper(): k.ma for k in tong_hop.dong.values()}
         theo_ten = {k.ten_chuan: k.ma for k in tong_hop.dong.values()}
         sms_khach = {}
@@ -205,7 +236,7 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
             if ma:
                 ma = theo_ma.get(ma.upper(), ma)
                 sms_khach[ma] = sms_khach.get(ma, 0) + x.so_tien
-        CACH = {"sms": "SMS", "so-ghi": "Bản final", "sms+so-ghi": "SMS + bản final",
+        CACH = {"hoa-don": "Hoá đơn Misa", "sms": "SMS", "so-ghi": "Bản final", "sms+so-ghi": "SMS + bản final",
                 "kho-doi": "Khó đòi", "uoc-tinh": "ƯỚC TÍNH", "ngoai-le": "Ngoại lệ"}
         for h, d in enumerate(sorted(kq.dong, key=lambda d: -d.total), start=2):
             _ghi(dc, h, [d.ma, d.ten, d.total, sms_khach.get(d.ma, 0), CACH.get(d.nguon, d.nguon)]
@@ -223,7 +254,61 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
             f"Chưa rõ tuổi (đang ước tính): {uoc:,.0f}. SMS cần gạch paid: "
             f"{sum(x[2] for x in kq.sms_cat) + sum(x[3] for x in kq.sms_khong_misa):,.0f}"))
     else:
-        _ghi(dc, 2, ["", "Chưa có đủ 2 file Misa cùng kỳ trong input nên chưa chạy thử được"])
+        _ghi(dc, 2, ["", "Chưa có file Tổng hợp + Chi tiết 131 cùng kỳ trong input nên chưa chạy thử được"])
+
+    # --- Nợ cũ chưa có job trên SMS: FIN tìm job/Sales cho từng hoá đơn, khai một lần
+    nc = wb.create_sheet("Nợ chưa có job")
+    _tieu_de(nc, ghep.COT_JOB_NO_CU, [16, 40, 16, 14, 18, 22, 24, 30])
+    da_khai = ghep.doc_job_no_cu(cfg.ghep)
+    dong_nc = []
+    if tong_hop and f_ct and job_misa is not None:
+        # v0.5: job năm nay đã có trên Misa — chỉ còn hoá đơn TRƯỚC năm nay cần FIN tìm job
+        for d in kq.dong:
+            if d.nguon == "kho-doi":
+                continue
+            co = {so_hd for so_hd, _, _ in da_khai.get(d.ma.upper(), [])}
+            for ngay, so_hd, han, tien in sorted(d.hoa_don, key=lambda x: (x[0] or dt.date.min)):
+                if ngay is None or ngay >= job_misa.tu_ngay:
+                    continue
+                n = int(so_hd) if str(so_hd).isdigit() else None
+                if n not in co:
+                    dong_nc.append([d.ma, d.ten, so_hd, ngay.strftime("%d/%m/%Y"), tien, "", "", ""])
+    elif tong_hop and (f_ct or tn_doc) and f_ct:
+        for d in kq.dong:
+            thieu = d.can_doi if d.dong_con else d.total     # khách không có job SMS nào: thiếu cả
+            if thieu < 1 or not d.hoa_don:
+                continue
+            co = {so_hd for so_hd, _, _ in da_khai.get(d.ma.upper(), [])}
+            con = thieu
+            for ngay, so_hd, han, tien in sorted(d.hoa_don, key=lambda x: (x[0] or dt.date.min)):
+                if con < 1 or ngay is None:
+                    continue
+                n = int(so_hd) if str(so_hd).isdigit() else None
+                if n in co:
+                    continue
+                dong_nc.append([d.ma, d.ten, so_hd, ngay.strftime("%d/%m/%Y"), min(tien, con), "", "", ""])
+                con -= tien
+    for h, r in enumerate(dong_nc, start=2):
+        _ghi(nc, h, r, (5,), (6, 7, 8))
+        for c in (6, 7, 8):
+            nc.cell(row=h, column=c).fill = VANG
+    if not dong_nc:
+        _ghi(nc, 2, ["", "Không có nợ cũ nào thiếu job"])
+    tep_tc = Path(cfg.ghep) / "Tham_chieu_job_no_cu.xlsx"
+    if dong_nc and not tep_tc.exists():
+        tc = openpyxl.Workbook()
+        w = tc.active
+        w.title = ghep.SHEET_JOB_NO_CU
+        _tieu_de(w, ghep.COT_JOB_NO_CU, [16, 40, 16, 14, 18, 22, 24, 30])
+        for h, r in enumerate(dong_nc, start=2):
+            _ghi(w, h, r, (5,), (6, 7, 8))
+            for c in (6, 7, 8):
+                w.cell(row=h, column=c).fill = VANG
+        tc.save(tep_tc)
+        ghi_log(f"Đã tạo {tep_tc.name} trong sample: FIN điền cột Job và Sales (ô vàng) một lần")
+    tt.cell(row=15, column=1, value="Nợ cũ chưa có job").font = Font(name=th.PHONG_NOI_DUNG, bold=True)
+    tt.cell(row=15, column=2, value=f"{len(dong_nc)} hoá đơn — điền Job, Sales ở file Tham_chieu_job_no_cu.xlsx "
+            "trong sample (dòng mới: chép từ sheet 'Nợ chưa có job')")
 
     tt.cell(row=13, column=1, value="Khách mới cần FIN ghép").font = Font(name=th.PHONG_NOI_DUNG, bold=True)
     tt.cell(row=13, column=2, value=f"{so_sms_moi} mã SMS, {so_misa_moi} khách Misa — xem 2 sheet "

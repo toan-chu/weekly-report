@@ -12,4 +12,8 @@ chay_nen.bat
 handoff/docs/fixtures/
 
 # File Excel thật (Misa, SMS, ghép khách, bản final) đặt tạm để phân tích — không lên repo.
-handoff/docs/*.xlsx
+handoff/docs/**/*.xlsx
+_to_delete/
+
+# Workspace chạy thử đặt trong repo — dữ liệu thật, không lên git
+Cong-No-Workspace/

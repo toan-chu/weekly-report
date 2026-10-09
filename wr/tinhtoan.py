@@ -36,6 +36,13 @@ class DongBaoCao:
     lo: List[sg.Lo] = field(default_factory=list)
     job: str = ""
     phan_nguon: Dict[str, float] = field(default_factory=dict)  # sms | so-ghi | kho-doi | uoc-tinh
+    ly_do_tu_dong: str = ""         # câu tool tự viết khi Sales chưa ghi lý do (v0.4)
+    dong_con: List[dict] = field(default_factory=list)   # job SMS còn nợ: job, sales, ngay, tien
+    can_doi: float = 0.0            # Misa − tổng job SMS: nợ cũ / chưa có job (+) hoặc SMS ghi dư (−)
+    can_doi_nhom: List[float] = field(default_factory=list)   # sáu nhóm tuổi của dòng cân đối
+    hoa_don: List[tuple] = field(default_factory=list)   # (ngày HĐ, số HĐ, hạn, còn nợ) — sheet Invoices
+    hd_misa: Dict = field(default_factory=dict)     # v0.5: (số HĐ int, năm) -> (trạng thái Misa, "job, job")
+    doi_chieu: Dict = field(default_factory=dict)   # v0.5: {mau, lech, tong_job, goi_y} — dư nợ vs tổng job Misa
 
     @property
     def nhom_gia_nhat(self) -> int:

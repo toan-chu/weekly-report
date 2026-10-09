@@ -55,8 +55,9 @@ Chia theo đường lấy bằng chứng, không theo vai.
 
 ### 5.1 Ranh giới với người dùng
 
-- Thao tác hằng tuần duy nhất của kế toán là thả 3 file (2 Misa + 1 SMS AR-AP) vào
-  `input/` (Chairman chốt 2026-10-06, WR-03). Thao tác một lần: điền file ghép
+- Thao tác hằng tuần duy nhất của kế toán là thả 6 file, xuất cùng lúc, vào `input/`:
+  Tổng hợp 131, Chi tiết 131 từ 01/01/2022, Tổng hợp 331, SMS AR-AP (Chairman chốt
+  2026-10-08, WR-04) + Bán hàng và Sổ chi tiết tài khoản 131, hai file xuất TỪ ĐẦU NĂM (FIN 09/10, WR-06). Không có nút "chạy ngay": ép chạy bằng Run trong Task Scheduler. Thao tác một lần: điền file ghép
   khách vào `sample/`, bỏ bản final tuần gần nhất vào thư mục gốc. Bố cục thư mục đích:
   gốc (báo cáo) + `input/` + `sample/` + `_tool/` ẩn — Chairman chốt 06/10.
   Mọi thiết kế ép kế toán mở file ra sửa, điền, hay chạy lệnh đều là vi phạm.
@@ -66,6 +67,18 @@ Chia theo đường lấy bằng chứng, không theo vai.
   thư mục lưu trữ, không biến mất.
 
 ### 5.2 Số liệu
+
+- Tuổi nợ (v0.4) tính từ từng hoá đơn trong file Chi tiết 131: hạn = ngày hoá đơn + credit
+  term; quá hạn từ HÔM SAU ngày đến hạn (FIN 08/10). Phiếu thu ghi số hoá đơn thì trừ đúng
+  hoá đơn đó, còn lại trừ hoá đơn cũ nhất trước. Cấm suy tuổi từ ngày ETD/ETA khi đã có file Chi tiết.
+- Payable lấy toàn bộ số dư phải trả trên Misa, không lọc (FIN 08/10). Sheet Payable y chang mẫu FIN:
+  No · Code · Name · Current · Total, chỉ số tổng, không phân tích, không tô màu (FIN 09/10).
+- Job chưa thanh toán (v0.5) lấy từ Misa: Bán hàng (trạng thái) + Sổ chi tiết 131 (job). Chỉ "Đã
+  thanh toán" mới tính là đã trả; "Chưa" và "Một phần" liệt kê đủ tiền hoá đơn (FIN 09/10). Trạng
+  thái Misa là tại lúc xuất file: phiếu thu sau ngày cuối kỳ thì hoá đơn vẫn là nợ của kỳ. Dòng
+  con KHÔNG bị ép cộng bằng dòng khách — chỗ lệch hiện ở cột Đối chiếu để FIN sửa.
+- Excel báo cáo ghi SỐ, không ghi công thức; cách tính viết bằng lời ở sheet Methodology.
+  Đổi luật tính thì phải sửa Methodology trong cùng lần sửa.
 
 - Có file SMS: SMS chỉ quyết NGÀY từng job, không bao giờ quyết tiền. SMS ghi nhiều
   hơn Misa thì bỏ job cũ nhất và liệt kê cho FIN gạch paid
@@ -78,8 +91,8 @@ Chia theo đường lấy bằng chứng, không theo vai.
   thì dòng đó bị đánh dấu, không được im lặng cho qua.
 - Tuổi nợ tính theo **số ngày thật đã trôi qua**, không tính theo số lần tool
   chạy. Nghỉ mấy tuần rồi chạy lại vẫn phải ra tuổi đúng.
-- Hai file đầu vào phải cùng kỳ: ngày "đến ngày" của file Tuổi nợ bằng ngày
-  cuối kỳ của file Tổng hợp cộng một ngày. Lệch thì dừng và báo lỗi, cấm ra file.
+- Các file đầu vào phải cùng kỳ: Chi tiết 131 và Tổng hợp 131 cùng ngày cuối kỳ (v0.4);
+  Tuổi nợ = Tổng hợp + 1 ngày (v0.3). Lệch thì dừng và báo lỗi, cấm ra file.
 
 ### 5.2b Những thứ không suy ra được từ file Misa
 
@@ -101,7 +114,9 @@ Chia theo đường lấy bằng chứng, không theo vai.
 - Mỗi lần chạy ghi một trang theo ngày chốt số: từng khách, số dư, cách chia
   nhóm tuổi, và ngày mà mỗi khoản xuất hiện lần đầu.
 - Trang của một ngày chốt đã có thì ghi đè đúng trang đó, không tạo thêm bản.
-- Khi kế toán có file làm tay cho một tuần, bản của con người thắng bản của máy.
+- Khi kế toán có file làm tay cho một tuần, bản của con người thắng bản của máy. Bản người
+  làm = file không có tab Review; cùng ngày chốt thì nó thắng mọi bản có tab Review, kể cả
+  bản sửa sau.
 - Mất sổ ghi thì chạy ở chế độ khởi động lạnh và đánh dấu, không được dừng.
 
 ### 5.3a Không bao giờ để tool im lặng
@@ -123,3 +138,15 @@ Chia theo đường lấy bằng chứng, không theo vai.
 - Cấm ghi đường dẫn tuyệt đối vào bất kỳ file nào đi theo dự án. Chỗ nào cần
   chỉ đường thì mô tả dấu hiệu nhận dạng, để lúc cài đặt tự dò.
 - Cấu hình theo từng máy không đi theo git.
+
+### 5.5 Dashboard
+
+- Sửa bất cứ file nào trong `dashboard/src` thì phải chạy `python dashboard/build.py` rồi commit
+  cả `dashboard/Credit_Dashboard.html`. Máy FIN không build; nó chỉ nhận bản đã đóng gói qua git.
+- Không bắt người dùng chép dashboard bằng tay: tool tự đặt bản mới nhất vào thư mục gốc workspace
+  mỗi lần quét.
+- Lịch chạy nền gọi thẳng `pythonw.exe runner.py`, không qua .bat (Chairman 09/10: không bật cửa sổ
+  CMD). Máy cài trước đó tự được runner đổi lịch một lần (`sua_lich_chay_an`).
+- Luật màu (Chairman 08/10): đỏ và các màu lân cận (cam, vàng cam) chỉ dùng cho điều TIÊU CỰC;
+  xanh lá cho điều TÍCH CỰC; xanh dương, tím cho TRUNG TÍNH. Cấm dùng đỏ/cam để phân biệt Sales,
+  khách hay vendor.

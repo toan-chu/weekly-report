@@ -71,6 +71,14 @@ def tao_file_khoi_dong() -> Path:
     return f
 
 
+def lenh_chay_an() -> str:
+    """Lệnh Task Scheduler gọi thẳng pythonw.exe (không qua .bat) để không bật cửa sổ CMD
+    (Chairman 09/10: mỗi lần chạy hiện CMD nhìn mệt)."""
+    pythonw = Path(sys.executable).with_name("pythonw.exe")
+    trinh_chay = pythonw if pythonw.exists() else Path(sys.executable)
+    return f'"{trinh_chay}" "{GOC / "runner.py"}"'
+
+
 def main() -> int:
     print("=" * 62)
     print(" CÀI ĐẶT TOOL BÁO CÁO CÔNG NỢ TUẦN")
@@ -85,9 +93,9 @@ def main() -> int:
     ws = cfg.workspace
 
     if os.name == "nt":
-        khoi_dong = tao_file_khoi_dong()
+        khoi_dong = tao_file_khoi_dong()      # vẫn giữ để chạy tay bằng nháy đúp
         ket_qua = subprocess.run(
-            ["schtasks", "/create", "/tn", TEN_TAC_VU, "/tr", f'"{khoi_dong}"',
+            ["schtasks", "/create", "/tn", TEN_TAC_VU, "/tr", lenh_chay_an(),
              "/sc", "minute", "/mo", "15", "/f"],
             check=False, capture_output=True, text=True,
         )
@@ -106,8 +114,11 @@ def main() -> int:
     print(f"  2. Bỏ bản final tuần gần nhất của kế toán trưởng vào  {cfg.ra}")
     print("     (chỉ cần lần đầu — từ tuần sau tool tự đọc báo cáo tuần trước ở đây)")
     print("  rồi nháy đúp 2_Kiem_tra_ghep_khach.bat để xem tool đã hiểu đúng chưa.")
-    print(f"\nXong. Mỗi tuần chỉ cần thả 3 file (2 Misa + 1 SMS AR-AP) vào {cfg.vao}")
-    print("Muốn có ngay, không chờ lịch 15 phút: nháy đúp 3_Chay_ngay.bat.")
+    print(f"\nXong. Mỗi tuần chỉ cần thả 6 file vào {cfg.vao}, xuất cùng lúc:")
+    print("  Misa: Tổng hợp công nợ phải thu · Chi tiết công nợ phải thu (từ 01/01/2022) ·")
+    print("        Tổng hợp công nợ phải trả · Bán hàng (từ đầu năm) · Sổ chi tiết TK131 (từ đầu năm)")
+    print("  SMS:  AR-AP")
+    print("Muốn có ngay, không chờ lịch 15 phút: mở Task Scheduler, chọn tác vụ, bấm Run.")
     return 0
 
 

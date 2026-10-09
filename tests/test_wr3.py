@@ -238,7 +238,7 @@ def test_doc_ban_final_dang_sheet_data(tmp_path):
     r = baocao.doc_bao_cao(f)
     assert list(r) == [misa.chuan_hoa_ten("KHACH MOT")], "dòng Total không được đọc thành khách"
     k = r[misa.chuan_hoa_ten("KHACH MOT")]
-    assert k.nhom == [100, 0, 0, 0, 0, 200] and k.credit_term == "30 days" and k.salesman == "Hằng"
+    assert k.nhom == [100, 0, 0, 0, 0, 200] and k.credit_term == "30 days" and k.salesman == "Lê Thị Hằng", "tên ngắn đổi sang tên đầy đủ (CEO 08/10)"
     assert k.job == "IMHANA23010011, IMHANA23020022" and k.ly_do == "đang kiện" and k.ghi_chu == "gọi lại"
 
 
@@ -349,7 +349,7 @@ def test_tuan_sau_doc_lai_bao_cao_tuan_truoc_o_goc_va_khong_ghi_de(ws, monkeypat
     assert bao_cao.parent == ws.workspace
     # kế toán sửa tay: đổi lý do của một khách
     wb = openpyxl.load_workbook(bao_cao)
-    sh = wb["Receivable"]
+    sh = wb["Receivables"]
     for r in range(6, sh.max_row + 1):
         if sh.cell(row=r, column=3).value == "EASTWIND CARGO CO., LTD":
             sh.cell(row=r, column=14, value="KTT ghi: đang kiện")
@@ -367,5 +367,5 @@ def test_tuan_sau_doc_lai_bao_cao_tuan_truoc_o_goc_va_khong_ghi_de(ws, monkeypat
     assert runner.quet_thu_muc(ws) == 1
     ten = sorted(f.name for f in ws.ra.glob("2026_W*.xlsx"))
     assert len(ten) == 2 and any("chay lai" in t for t in ten)
-    sh = openpyxl.load_workbook(bao_cao)["Receivable"]
+    sh = openpyxl.load_workbook(bao_cao)["Receivables"]
     assert any(sh.cell(row=r, column=14).value == "KTT ghi: đang kiện" for r in range(6, sh.max_row + 1))

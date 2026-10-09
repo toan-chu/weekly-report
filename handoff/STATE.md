@@ -1,102 +1,68 @@
-Cập nhật:  2026-10-06 UTC+7 — bởi claude-logisticist
+Cập nhật:  2026-10-09 UTC+7 — bởi claude-logisticist
 Chỉ huy:   claude   [COWORK-EXEC]
 
 ## Việc đang mở
+   WR-04   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
+           Full credit report: 4 file → Summary, Receivables, AR Risk, Payable, Cash Flow,
+           Methodology, Review. 44 phép thử đạt. W40 thật: 61/70 khớp bản người, 97,8% tiền
+           đúng nhóm. Chờ Chairman chạy trên máy mình rồi máy FIN.
+
    WR-03   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 0/2
-           Ghép SMS + file ghép khách + bản final. Logic đạt 27 phép thử, chạy thật
-           W40 tổng khớp Misa. Chờ Chairman: chạy 3 nút trên máy FIN, chốt ngưỡng khớp.
+           Logic SMS + bản final; phần tuổi nợ đã được WR-04 thay. Còn 3 dòng Windows chờ ký.
 
-   WR-02   giao cho chairman   chờ-đề-bài   vòng 0/2
-           Nghiệm thu bằng phép so hợp lệ. Có thể gộp vào ngưỡng nghiệm thu của WR-03.
+   WR-02   giao cho chairman   chờ-đề-bài   — có thể đóng huỷ, WR-04 đã so bản người.
+   WR-01   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2 — 3 dòng Windows chờ ký.
 
-   WR-01   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Còn 3 dòng Windows chờ ký (nay là 1_Khoi_tao_workspace.bat, Task Scheduler, Excel).
+   WR-05   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
+           Excel có dòng con job/Sales, sheet Invoices, trang bìa; Credit_Dashboard.html ở gốc
+           workspace (kéo báo cáo vào, In / Lưu PDF). 48 phép thử đạt.
 
-## Hôm nay (06/10)
-   Tuần 39 FIN báo 11 khách sai tuổi: do file Misa không có ngày hoá đơn (56,9/74,5 tỷ ở
-   cột "không có hạn nợ"). Thêm nguồn SMS AR-AP (ngày từng job), file ghép khách FIN điền,
-   bản final kế toán trưởng làm trí nhớ nợ cũ. 3 nút .bat cho máy FIN. Xem WR-03.
-   FIN trả lời 3 câu về file ghép: handoff/docs/NOTE-ke-toan-tra-loi-20261006.md.
+   WR-06   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
+           Job chưa thanh toán từ Misa (Bán hàng + Sổ chi tiết 131) + cột Đối chiếu tô màu.
+           55 phép thử đạt. W40: 57 khớp, 6 đỏ, 2 cam, 5 khó đòi. Workspace test đã để sẵn 6 file.
 
-## Hôm 24/09 (tối)
-   Đổi nhịp chạy nền sang 15 phút. Dọn rác trong thư mục mã nguồn và chặn không
-   cho sinh lại: lệnh chỉ đọc không tạo thư mục, cấu hình của máy khác thì báo
-   chứ không đẻ thư mục tên "C:\Users\...", tắt sinh .pyc khi chạy nền, tắt
-   cache của pytest. Viết lại README cho FIN đọc. Khởi tạo git, commit đầu tiên.
-   29 phép thử.
+   WR-07   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
+           Dashboard nhiều trang + bấm xuyên (khách, Sales); lịch chạy nền không bật CMD.
 
-## Hôm 24/09 (chiều)
-   Rà tính di động: cấu hình theo tên máy, chạy nền không chết vì tiếng Việt,
-   Task Scheduler gọi qua chay_nen.bat, file kết quả đang mở thì hoãn. 25 phép thử.
-   Đối chiếu 3 bản tay W33-W35: nối từ bản tay tuần trước thì khớp 60/72 (W34)
-   và 47/68 (W35). Ba nhóm chênh đã ghi trong phiếu, cần kế toán trả lời.
+## Hôm nay (09/10)
+   FIN thêm 2 file xuất từ đầu năm; luật "chỉ Đã thanh toán mới là đã trả"; cần lệnh báo lệch.
+   Làm WR-06. Chairman mở được dashboard trên Windows. Sửa file ghép khách test: TTND VIETNGA
+   → KH00416, KH00361 (lô tàu chìm) = không có SMS. Chiều: làm WR-07 (dashboard nhiều trang, chạy ẩn). FIN audit WR-06 xong, đồng ý. FIN chốt
+   Payable = y chang mẫu, chỉ số tổng, không tô đỏ. Đã giả lập máy FIN với gói sample_w40: chạy sạch.
 
-## Hôm 24/09 (sáng)
-   Chairman thả 6 file W33-W35 vào 01_Input, bấm Run không ra gì. Do tôi xoá
-   nhầm settings.json hôm qua, cộng với việc tool chỉ ghép được 1 cặp file.
-   Đã sửa cả hai: ghép cặp theo kỳ và chạy nhiều tuần lần lượt, mọi nhánh dừng
-   sớm đều ghi nhật ký. Chạy lại ra đủ 3 báo cáo W33, W34, W35. 21 phép thử.
-   Tách "thiếu Credit Term / Salesman" khỏi "lỗi số liệu" để bảng bớt tô màu.
+## Hôm nay (08/10, chiều)
+   Chairman chạy WR-04 trên Windows: đúng số. CEO chốt tên Sales đầy đủ. Thêm lý do tự động
+   "[TỰ ĐỘNG]". Làm WR-05: dòng con job trong Excel, sheet Invoices, dashboard HTML.
 
-## Hôm 23/09
-   Chairman viết kịch bản nghiệm thu, mở việc WR-01.
-   Dựng xong tool: đọc 2 file Misa, sổ ghi theo lô nợ có hạn, luật chia 6 nhóm
-   tuổi, ghi file theo mẫu chuẩn kẻ màu thương hiệu, wizard cài đặt 1 lần.
-   Chạy kịch bản W37: ra đúng file, 74 khách, tổng 9.547.752.597 khớp Misa,
-   45 dòng vào sheet Cần xem lại. Thả nhầm file lệch kỳ thì dừng, không ra file.
-   Đối chiếu bản kế toán làm tay: khớp 62/74 dòng, 12 dòng lệch giải thích được.
-   Dọn mẫu chuẩn còn một sheet Receivable trắng; xoá 2 file fixture trùng.
+## Hôm nay (08/10, sáng)
+   FIN chốt: Chi tiết 131 xuất từ 01/01/2022 mỗi tuần; quá hạn tính từ hôm sau ngày đến hạn;
+   Payable = toàn bộ Misa (bản 114 vendor lệch vì hoá đơn nhập sau). Dựng WR-04. Bỏ nút
+   3_Chay_ngay. Đổi tên file trong handoff/docs/new theo nhóm 1_INPUT / 2_SAMPLE /
+   3_DOI-CHIEU / 4_CU; .gitignore chặn mọi xlsx dưới handoff/docs.
 
-   Chiều: kế toán trả lời đợt 2. Thêm cơ chế khai đè credit term và ngoại lệ.
-   Chạy tiếp W38 nối từ W37: 70 khách, khớp bản tay 56/70; dòng lệch to nhất là
-   LLC UPP mà kế toán đã xác nhận máy đúng. 15 phép thử đạt.
-
-   Cuối chiều: cho người dùng tự trỏ thư mục đích (--dat-thu-muc / --xem-cau-hinh),
-   tool tạo đủ 6 ngăn bên trong. Thư mục mã nguồn không còn chứa dữ liệu chạy.
-   Bắt được lỗi lệnh chạy tay bỏ qua cấu hình máy, đã sửa. 17 phép thử đạt.
-
-   Tối: kế toán thử bộ dữ liệu giả W39, hỏi vì sao tổng báo cáo khác tổng file
-   Tuổi nợ. Số đúng cả, nhưng báo cáo chưa giải thích. Thêm khối đối chiếu ở
-   đầu sheet Cần xem lại. 19 phép thử đạt.
-
-## Hôm qua
-   Đọc 3 tuần dữ liệu thật W36, W37, W38 (mỗi tuần: 2 file Misa + 1 báo cáo
-   kế toán làm tay). Rút ra luật điền báo cáo, chạy thử luật đó trên dữ liệu
-   thật: khớp 64/74 dòng ở W37 và 56/70 dòng ở W38.
-   Chốt với kế toán: danh sách và Total lấy từ file Tổng hợp, tuổi nợ lấy từ
-   file Tuổi nợ, hai bên mâu thuẫn thì tiền theo Tổng hợp.
-   Phát hiện kế toán đang mang cách chia của tuần trước sang tuần sau — đây là
-   thứ tool phải thay thế bằng sổ ghi.
-   Chairman chốt điều kiện: kế toán không còn thao tác gì ngoài thả 2 file.
-   Dựng phòng bàn giao theo Chuẩn Bàn Giao v1.1.
+## Hôm 06/10
+   WR-03: thêm SMS AR-AP, file ghép khách, bản final làm trí nhớ nợ cũ; 3 nút .bat.
 
 ## Vừa đóng
    chưa có
 
 ## Đang treo, cần Chairman
-   1. Cài lên máy FIN: git pull → 1_Khoi_tao_workspace.bat → bỏ file ghép khách vào
-      sample/, w39 final vào thư mục gốc → 2_Kiem_tra_ghep_khach.bat. Ký 3 dòng Windows.
-   2. Chốt ngưỡng nghiệm thu WR-03: bao nhiêu/70 khách khớp bản kế toán trưởng tuần 40.
-   3. Hỏi FIN: tuổi nợ tính từ ETD/ETA hay ngày xuất hoá đơn (tool đang giả định ETD/ETA).
-   4. FIN sửa 1 dòng file ghép: TTND VIETNGA bỏ khỏi sheet Ghép khách (đã theo KH00416),
-      và ghép KH00361 Trung tâm nhiệt đới Việt Nga nếu có mã SMS.
+   1. Chạy thử WR-06 trên máy Chairman (Task Scheduler → Run), rồi commit, cài máy FIN.
+   2. AR Risk dùng lý do của tuần trước; dashboard WR-05 có tự tính lại nhóm khi chị KTT
+      sửa lý do không? (đề xuất: có)
+   3. Gói handoff/docs/sample_w40 (zip) gửi FIN chạy lại W40; W41 thả 6 file mới.
 
 ## Bẫy đã biết
-   - File SMS không có kỳ báo cáo bên trong: tool lấy file SMS mới nhất trong 01_Input.
-   - SMS quy VND theo tỷ giá lúc làm job, Misa theo lúc hạch toán: vênh ≤1% (tối đa
-     500.000đ) coi là tỷ giá, không báo.
-   - File Misa tải về bị Windows thêm hậu tố (21), (22) vào tên. Con số đó
-     không có nghĩa. Luôn đọc ngày chốt ghi bên trong file, không tin tên file.
-   - File Tuổi nợ phồng số: W38 cộng ra 73 tỷ trong khi thực nợ 10,0 tỷ, vì
-     chứa hoá đơn đã trả nhưng chưa gắn phiếu thu.
-   - 56,2/73 tỷ trong file Tuổi nợ nằm ở ô "Không có hạn nợ" — hoá đơn cũ
-     không ghi hạn thanh toán.
-   - Báo cáo mẫu cũ có công thức trỏ tới ô cố định Receivable!E78; mẫu mới
-     tự tính dòng TỔNG theo số dòng thật nên hết bẫy này.
-   - Lệnh chạy tay mà không đọc settings.json thì sổ ghi rơi vào thư mục mã
-     nguồn, tool tưởng khởi động lạnh mà không báo gì rõ ràng.
-   - Mã khách của cùng một khách khác nhau giữa hai file Misa, nên tool so khớp
-     theo TÊN đã chuẩn hoá. Đổi tên khách trong Misa là mất liên kết sổ ghi.
+   - Số hoá đơn Misa đánh lại từ đầu mỗi năm: ghép phiếu thu theo số HĐ phải chọn HĐ
+     gần nhất trước ngày thu, không lấy HĐ đầu tiên mang số đó.
+   - File Tổng hợp và Chi tiết xuất khác giờ thì số dư lệch (W40: Thủy Ngân 308tr, GOLDEN
+     GLOBE 2,7tr). Tiền theo Tổng hợp; Review liệt kê.
+   - Hoá đơn nhập lùi ngày làm dư đầu kỳ Misa khác dư cuối báo cáo tuần trước: cột
+     "Backdated vs last report" ở AR Risk và Payable.
+   - File Misa tải về bị Windows thêm hậu tố (21), (22): luôn đọc ngày trong file.
+   - Mã khách khác nhau giữa các file Misa nên so khớp theo TÊN đã chuẩn hoá.
+   - Trạng thái thanh toán trên file Bán hàng là tại lúc xuất, không phải ngày cuối kỳ (WR-06).
+   - Excel thật mới tính công thức; openpyxl không lưu giá trị — báo cáo ghi số, không công thức.
 
 ## Báo lỗi giả
    Tháng này: 0

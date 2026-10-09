@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:,">
+<title>Trustana — Credit Dashboard</title>
+<style>/*__CSS__*/</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="#"><img alt="Trustana" src="/*__LOGO__*/"><span><strong>Credit Dashboard</strong><small>Phải thu · Phải trả · Dòng tiền</small></span></a>
+  <nav class="jump" id="jump">
+    <span class="pill" id="pill"></span>
+    <a href="#tong-quan" data-p="tong-quan">Tổng quan</a><a href="#khach" data-p="khach">Khách hàng</a><a href="#sales" data-p="sales">Sales</a>
+    <a href="#rui-ro" data-p="rui-ro">Nợ xấu</a><a href="#tra" data-p="tra">Phải trả</a><a href="#tien" data-p="tien">Dòng tiền</a>
+  </nav>
+  <span class="spacer"></span>
+  <span class="period-chip" id="periodChip"><small>KỲ BÁO CÁO</small><b>—</b></span>
+  <button class="btn ghost" id="btnFile" type="button">Nạp file khác</button>
+  <button class="btn" id="btnPrint" type="button" disabled>In / Lưu PDF</button>
+</header>
+
+<main>
+  <section class="drop" id="drop" role="button" tabindex="0" aria-label="Chọn file báo cáo tuần">
+    <div class="ico">▤</div>
+    <div>
+      <h3>Thả file báo cáo tuần vào đây</h3>
+      <p>File <b>…_Credit_Report_….xlsx</b> ở thư mục gốc workspace. Hoặc bấm để chọn file.
+        Dữ liệu chỉ đọc trong trình duyệt, không gửi đi đâu.</p>
+    </div>
+    <input type="file" id="file" accept=".xlsx">
+  </section>
+  <p class="err" id="err" hidden></p>
+
+  <div id="app" hidden>
+    <div class="filterbar" id="filterbar">
+      <span class="fb-l">Lọc</span>
+      <select id="gSales"><option value="">Mọi Sales</option></select>
+      <select id="gTier"><option value="">Mọi nhóm rủi ro</option></select>
+      <select id="gBucket"><option value="">Mọi tuổi nợ</option></select>
+      <input id="gSearch" type="search" placeholder="Tìm khách, mã, job…">
+      <span class="chips" id="chips"></span>
+      <span class="fb-hint">Bấm biểu đồ để lọc · bấm khách / Sales để vào trang chi tiết</span>
+    </div>
+
+    <!-- Mỗi tab là một trang riêng (WR-07). Bấm một khách / một Sales thì vào trang chi tiết;
+         bộ lọc đi theo sang các tab khác, bỏ bằng nút ✕ trên thanh lọc. -->
+    <section class="page" data-page="tong-quan">
+      <div class="sec-head"><h2>Tổng quan tuần</h2><p id="srcNote"></p></div>
+      <div class="hero" id="hero"></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="grid2">
+        <div class="card" id="cAging"></div>
+        <div class="card" id="cTrend"></div>
+      </div>
+      <div class="grid2">
+        <div class="card" id="cWatch"></div>
+        <div class="card" id="cSalesMini"></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="khach">
+      <div class="crumb" id="khCrumb"></div>
+      <div id="khList">
+        <div class="sec-head"><h2>Khách đang nợ mình</h2><p>Bấm một khách để mở trang chi tiết: job, ai phụ trách, từng hoá đơn.</p></div>
+        <div class="card" id="cKhach"></div>
+      </div>
+      <div id="khDetail" hidden>
+        <div class="dhead" id="kdHead"></div>
+        <div class="tiles" id="kdTiles"></div>
+        <div class="grid2"><div class="card" id="cKdAge"></div><div class="card" id="cKdSales"></div></div>
+        <div class="card mt" id="cKdJobs"></div>
+        <div class="grid2 wide-left"><div class="card" id="cKdInv"></div><div class="card" id="cKdSig"></div></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="sales">
+      <div class="crumb" id="saCrumb"></div>
+      <div id="saList">
+        <div class="sec-head"><h2>Phải thu theo Sales</h2><p>Bấm một Sales để mở trang riêng của người đó. Các tab khác lọc theo luôn.</p></div>
+        <div class="grid2 wide-left"><div class="card" id="cSales"></div><div class="card" id="cSalesAge"></div></div>
+        <div class="card mt" id="cSalesTbl"></div>
+      </div>
+      <div id="saDetail" hidden>
+        <div class="dhead" id="sdHead"></div>
+        <div class="tiles" id="sdTiles"></div>
+        <div class="grid2 wide-left"><div class="card" id="cSdCust"></div><div class="card" id="cSdAge"></div></div>
+        <div class="card mt" id="cSdJobs"></div>
+        <div class="card mt" id="cSdRisk"></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="rui-ro">
+      <div class="crumb" id="rrCrumb"></div>
+      <div class="sec-head"><h2>Nợ xấu và cảnh báo</h2><p>Nhóm theo luật của kế toán trưởng. Sales chưa ghi lý do thì tool tự viết nhận xét.</p></div>
+      <div class="grid2 wide-left">
+        <div class="card" id="cRisk"></div>
+        <div class="card" id="cTier"></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="tra">
+      <div class="sec-head"><h2>Phải trả vendor</h2><p>Toàn bộ số dư phải trả trên Misa — chỉ số tổng, theo mẫu của FIN.</p></div>
+      <div class="grid2 wide-left">
+        <div class="card" id="cVendor"></div>
+        <div class="card" id="cVStatus"></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="tien">
+      <div class="crumb" id="ttCrumb"></div>
+      <div class="sec-head"><h2>Dòng tiền trong tuần</h2><p>Tiền khách trả (sổ TK131) và tiền đã trả vendor (sổ TK331).</p></div>
+      <div class="grid3">
+        <div class="card" id="cChannel"></div>
+        <div class="card" id="cPayers"></div>
+        <div class="card" id="cPaidV"></div>
+      </div>
+    </section>
+    <footer class="foot">Mọi con số lấy từ file Excel tuần; cách tính từng con số ở sheet <b>Methodology</b> của file đó.</footer>
+  </div>
+</main>
+<div class="tip" id="tip" hidden></div>
+<script>/*__XLSX__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>

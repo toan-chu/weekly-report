@@ -107,7 +107,7 @@ def _chay(tmp_path, tuan):
 @can_du_lieu_that
 def test_chay_w37_ra_dung_file_va_dung_total(tmp_path):
     dich, _ = _chay(tmp_path, 37)
-    assert dich.name == "2026_W37_Bang_cong_no_tuan_05.09-11.09.2026.xlsx"
+    assert dich.name == "2026_W37_Credit_Report_05.09-11.09.2026.xlsx"
     may = baocao.doc_bao_cao(dich)
     th = misa.doc_tong_hop(TH[37])
     assert len(may) == 74
@@ -271,9 +271,9 @@ def test_tha_nhieu_tuan_cung_luc_chay_lan_luot_tu_ky_cu_nhat(tmp_path, monkeypat
         shutil.copy(TN[w], cfg.vao / TN[w].name)
     assert runner.quet_thu_muc(cfg) == 3
     ra = sorted(f.name for f in cfg.ra.glob("*.xlsx"))
-    assert ra == ["2026_W36_Bang_cong_no_tuan_29.08-04.09.2026.xlsx",
-                  "2026_W37_Bang_cong_no_tuan_05.09-11.09.2026.xlsx",
-                  "2026_W38_Bang_cong_no_tuan_12.09-18.09.2026.xlsx"]
+    assert ra == ["2026_W36_Credit_Report_29.08-04.09.2026.xlsx",
+                  "2026_W37_Credit_Report_05.09-11.09.2026.xlsx",
+                  "2026_W38_Credit_Report_12.09-18.09.2026.xlsx"]
     assert sorted(sg.SoGhi(cfg.so_ghi).trang) == ["2026-09-05", "2026-09-12", "2026-09-19"]
     assert all(f.name.startswith("[DONE]") for f in cfg.vao.glob("*.xlsx"))
 

@@ -91,6 +91,12 @@ class SoGhi:
         self.bo_qua: Dict[str, dict] = {}
         # Bản final người duyệt đã nạp: tên file -> dấu thời gian sửa, để không nạp lại
         self.da_nap: Dict[str, str] = {}
+        # v0.4: các con số của sheet Summary từng tuần (ngày chốt ISO -> {chỉ số: giá trị})
+        self.lich_su_tuan: Dict[str, dict] = {}
+        # v0.4: số còn phải trả từng vendor theo ngày chốt (ISO -> {mã vendor: số dư Có})
+        self.phai_tra: Dict[str, Dict[str, float]] = {}
+        # trang của ngày chốt nào lấy từ file nào, có phải bản người làm (không có tab Review)
+        self.nguon_trang: Dict[str, dict] = {}
         if self.duong_dan.exists():
             self._doc()
 
@@ -101,6 +107,9 @@ class SoGhi:
         self.dieu_chinh = raw.get("dieu_chinh", {})
         self.bo_qua = raw.get("bo_qua", {})
         self.da_nap = raw.get("da_nap", {})
+        self.lich_su_tuan = raw.get("lich_su_tuan", {})
+        self.phai_tra = raw.get("phai_tra", {})
+        self.nguon_trang = raw.get("nguon_trang", {})
         for ngay, khach in raw.get("trang", {}).items():
             self.trang[ngay] = {k: HoSoKhach.tu_dict(v) for k, v in khach.items()}
 
@@ -113,6 +122,9 @@ class SoGhi:
             "dieu_chinh": self.dieu_chinh,
             "bo_qua": self.bo_qua,
             "da_nap": self.da_nap,
+            "lich_su_tuan": dict(sorted(self.lich_su_tuan.items())),
+            "phai_tra": dict(sorted(self.phai_tra.items())),
+            "nguon_trang": self.nguon_trang,
             "trang": {
                 ngay: {k: v.thanh_dict() for k, v in khach.items()}
                 for ngay, khach in sorted(self.trang.items())
@@ -132,6 +144,10 @@ class SoGhi:
         if not cu:
             return None
         return self.trang[max(cu)]
+
+    def phai_tra_truoc(self, ngay_chot: dt.date) -> Optional[Dict[str, float]]:
+        cu = [n for n in self.phai_tra if dt.date.fromisoformat(n) < ngay_chot]
+        return self.phai_tra[max(cu)] if cu else None
 
     def ngay_trang_truoc(self, ngay_chot: dt.date) -> Optional[dt.date]:
         cu = [n for n in self.trang if dt.date.fromisoformat(n) < ngay_chot]
@@ -192,3 +208,16 @@ def so_ngay_term(credit_term: str, mac_dinh: int = 30) -> int:
         return 0
     m = _re.search(r"(\d+)", t)
     return int(m.group(1)) if m else mac_dinh
+
+
+def han_tu_term(ngay: dt.date, credit_term: str, mac_dinh: int = 30) -> dt.date:
+    """Ngày đến hạn của một hoá đơn. '30 days' → +30 ngày. '14 ngày của tháng tiếp theo'
+    → ngày 14 của tháng sau tháng hoá đơn. Không ghi gì → +mặc định."""
+    import re as _re
+    t = str(credit_term or "").strip().lower()
+    if _re.search(r"tháng (tiếp theo|sau|kế tiếp)|next month|following month", t):
+        m = _re.search(r"(\d+)", t)
+        ngay_thang = min(int(m.group(1)), 28) if m else 1
+        nam, thang = (ngay.year + 1, 1) if ngay.month == 12 else (ngay.year, ngay.month + 1)
+        return dt.date(nam, thang, ngay_thang)
+    return ngay + dt.timedelta(days=so_ngay_term(credit_term, mac_dinh))

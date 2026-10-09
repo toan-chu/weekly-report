@@ -149,11 +149,23 @@ def _k(ma) -> str:
 
 
 def tim_file_ghep(thu_muc) -> Optional[Path]:
-    """File ghép khách mới nhất trong thư mục sample (bỏ qua file KIEM_TRA tool sinh)."""
+    """File ghép khách mới nhất trong thư mục sample. Nhận theo NỘI DUNG (có sheet
+    "Ghép khách" hoặc "Misa chưa ghép"), nên bỏ thêm file khác vào sample — ví dụ
+    Customer Master List — không làm tool đọc nhầm. Bỏ qua file KIEM_TRA tool sinh."""
     if not thu_muc or not Path(thu_muc).is_dir():
         return None
-    ung_vien = [f for f in Path(thu_muc).glob("*.xlsx")
-                if not f.name.startswith(("~$", "KIEM_TRA"))]
+    ung_vien = []
+    for f in Path(thu_muc).glob("*.xlsx"):
+        if f.name.startswith(("~$", "KIEM_TRA")):
+            continue
+        try:
+            wb = openpyxl.load_workbook(f, read_only=True)
+            co = bool({"Ghép khách", "Misa chưa ghép"} & set(wb.sheetnames))
+            wb.close()
+        except Exception:
+            co = False
+        if co:
+            ung_vien.append(f)
     return max(ung_vien, key=lambda f: f.stat().st_mtime) if ung_vien else None
 
 
@@ -279,3 +291,41 @@ def ma_misa_cua(dong: DongSMS, bang: Optional[BangGhep], theo_ma: Dict[str, str]
     if tc in theo_ten:
         return theo_ten[tc], "trùng tên"
     return None, "chưa ghép"
+
+
+
+# --- v0.4: nợ cũ không có job trên SMS — FIN khai một lần (Chairman 08/10) ---------------
+
+SHEET_JOB_NO_CU = "Job cho nợ cũ"
+COT_JOB_NO_CU = ["Mã khách Misa", "Tên khách", "Số hoá đơn", "Ngày hoá đơn", "Còn nợ (VND)",
+                 "Job (SMS)", "Sales", "Ghi chú"]
+
+
+def doc_job_no_cu(thu_muc) -> Dict[str, List[Tuple[int, str, str]]]:
+    """Đọc mọi file trong sample/ có sheet "Job cho nợ cũ". Trả {MÃ KHÁCH: [(số HĐ, job, sales)]}.
+    Dòng chưa điền Job lẫn Sales thì bỏ qua (FIN chưa tìm ra)."""
+    ra: Dict[str, List[Tuple[int, str, str]]] = {}
+    if not thu_muc or not Path(thu_muc).is_dir():
+        return ra
+    for f in sorted(Path(thu_muc).glob("*.xlsx"), key=lambda f: f.stat().st_mtime):
+        if f.name.startswith(("~$", "KIEM_TRA")):
+            continue
+        try:
+            wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+        except Exception:
+            continue
+        if SHEET_JOB_NO_CU in wb.sheetnames:
+            hang = list(wb[SHEET_JOB_NO_CU].iter_rows(values_only=True))
+            tieu = [_o(v).lower() for v in (hang[0] if hang else [])]
+            def i(*k):
+                return next((j for j, t in enumerate(tieu) if all(x in t for x in k)), None)
+            i_ma, i_hd, i_job, i_sale = i("mã khách"), i("số hoá đơn") or i("số hóa đơn"), i("job"), i("sales")
+            for r in hang[1:]:
+                ma = _k(r[i_ma]) if i_ma is not None and i_ma < len(r) else ""
+                hd = re.sub(r"\D", "", _o(r[i_hd])) if i_hd is not None and i_hd < len(r) else ""
+                job = _o(r[i_job]) if i_job is not None and i_job < len(r) else ""
+                sale = _o(r[i_sale]) if i_sale is not None and i_sale < len(r) else ""
+                if ma and hd and (job or sale):
+                    ra.setdefault(ma, []).append((int(hd), job, sale))
+        wb.close()
+    return ra

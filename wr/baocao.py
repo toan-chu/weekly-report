@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import re
 import shutil
+from copy import copy
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -23,7 +24,7 @@ THANG_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"
 
 def ten_file_bao_cao(tu_ngay: dt.date, den_ngay: dt.date) -> str:
     tuan = den_ngay.isocalendar()[1]
-    return (f"{den_ngay.year}_W{tuan:02d}_Bang_cong_no_tuan_"
+    return (f"{den_ngay.year}_W{tuan:02d}_Credit_Report_"
             f"{tu_ngay:%d.%m}-{den_ngay:%d.%m.%Y}.xlsx")
 
 
@@ -57,6 +58,7 @@ def ghi_bao_cao(
     dich: Path,
     tong_misa: Optional[float] = None,
     doi_chieu: Optional[dict] = None,
+    them_sheet=None,
 ) -> Path:
     dich.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(mau_chuan, dich)
@@ -65,17 +67,23 @@ def ghi_bao_cao(
     ws.title = th.SHEET_BANG
     # chữ tiêu đề lấy từ thuonghieu.py mỗi lần chạy, sửa ở đó là đủ
     ws["A1"], ws["A2"], ws["A4"] = th.CONG_TY, th.TEN_BAO_CAO, th.TEN_BANG
-    for i, (ten_cot, _, _) in enumerate(th.COT, start=1):
+    for i, (ten_cot, _, rong) in enumerate(th.COT, start=1):
         ws.cell(row=th.DONG_TIEU_DE, column=i).value = ten_cot
+        ws.column_dimensions[get_column_letter(i)].width = rong
     ws["A3"] = _ngay_en(ngay_chot)
 
     vien = Side(style="thin", color="D9D9D9")
     kieu_vien = Border(left=vien, right=vien, top=vien, bottom=vien)
+    # v0.5 (WR-06): cột Đối chiếu — dư nợ Misa so với tổng job chưa thanh toán, tô màu cho FIN
+    co_doi_chieu = any(d.doi_chieu for d in dong)
+    n_cot = len(th.COT) + (1 if co_doi_chieu else 0)
+    if co_doi_chieu:
+        _cot_doi_chieu(ws)
     hang = th.DONG_DAU_DU_LIEU
     for stt, d in enumerate(dong, start=1):
         gia_tri = [stt, d.ma, d.ten, d.credit_term, d.total] + \
                   [v if abs(v) > 0.4 else None for v in d.nhom] + \
-                  [d.salesman, ghep_ghi_chu(d.job, d.ghi_chu), d.ly_do]
+                  [d.salesman, d.job, d.ly_do or d.ly_do_tu_dong]
         for cot, v in enumerate(gia_tri, start=1):
             o = ws.cell(row=hang, column=cot, value=v)
             o.font = Font(name=th.PHONG_NOI_DUNG, size=10)
@@ -86,31 +94,125 @@ def ghi_bao_cao(
             elif cot == 1:
                 o.alignment = Alignment(horizontal="center")
             else:
-                o.alignment = Alignment(vertical="top", wrap_text=cot >= 13)
+                # Job Number không xuống dòng (danh sách job đầy đủ nằm ở các dòng con)
+                o.alignment = Alignment(vertical="top", wrap_text=cot == 14)
+        if not d.ly_do and d.ly_do_tu_dong:
+            ws.cell(row=hang, column=14).font = Font(name=th.PHONG_NOI_DUNG, size=10, italic=True,
+                                                     color="7F7F7F")
         if d.cho_xem_lai:
             mau = (th.DO_CANH_BAO if d.nguon in {"khoi-dong-lanh", "ngoai-le", "uoc-tinh"}
                    else th.VANG_CANH_BAO)
             for cot in range(1, len(th.COT) + 1):
                 ws.cell(row=hang, column=cot).fill = PatternFill("solid", fgColor=mau)
+        if co_doi_chieu:
+            _o_doi_chieu(ws, hang, d.doi_chieu, kieu_vien)
+        cha = hang
         hang += 1
+        hang = _ghi_dong_con(ws, d, hang, kieu_vien, n_cot)
+        if hang > cha + 1:
+            ws.cell(row=cha, column=3).font = Font(name=th.PHONG_NOI_DUNG, size=10, bold=True)
+            ws.row_dimensions[cha].collapsed = True
 
     hang_tong = hang
-    o = ws.cell(row=hang_tong, column=2, value="TỔNG")
-    o.font = Font(name=th.PHONG_TIEU_DE, size=10, bold=True, color=th.TRANG)
-    for cot in range(1, len(th.COT) + 1):
+    for cot in range(1, n_cot + 1):
         c = ws.cell(row=hang_tong, column=cot)
         c.fill = PatternFill("solid", fgColor=th.TIM)
         c.font = Font(name=th.PHONG_TIEU_DE, size=10, bold=True, color=th.TRANG)
         if 5 <= cot <= 11:
-            chu = get_column_letter(cot)
-            c.value = f"=SUM({chu}{th.DONG_DAU_DU_LIEU}:{chu}{hang_tong - 1})"
+            # ghi SỐ, không ghi công thức: dòng con (job) nằm xen giữa, SUM cả cột sẽ cộng trùng
+            c.value = round(d_tong(dong, cot), 2)
             c.number_format = DINH_DANG_TIEN
             c.alignment = Alignment(horizontal="right")
+    ws.cell(row=hang_tong, column=2, value="TOTAL")
+    from openpyxl.worksheet.properties import Outline
+    ws.sheet_properties.outlinePr = Outline(summaryBelow=False, summaryRight=True)
 
-    ws.auto_filter.ref = f"A{th.DONG_TIEU_DE}:{get_column_letter(len(th.COT))}{hang_tong - 1}"
+    ws.auto_filter.ref = f"A{th.DONG_TIEU_DE}:{get_column_letter(n_cot)}{hang_tong - 1}"
     _ghi_sheet_xem_lai(wb, dong, ngay_chot, tong_misa, doi_chieu or {})
+    if them_sheet:
+        them_sheet(wb)
     wb.save(dich)
     return dich
+
+
+def d_tong(dong: List[DongBaoCao], cot: int) -> float:
+    """Tổng một cột tiền của các dòng KHÁCH (cột 5 = Total, 6..11 = sáu nhóm tuổi)."""
+    return sum(d.total if cot == 5 else d.nhom[cot - 6] for d in dong)
+
+
+NHAN_CON = "    └ "
+
+
+# v0.5 (WR-06): màu đối chiếu — đỏ/vàng/cam là việc FIN cần xem lại, tím là lỗi ghép tên
+MAU_DC = {"khop": ("E2F0D9", "375623"), "do": ("F8CBCB", "9C0006"), "vang": ("FFF2CC", "7F6000"),
+          "cam": ("FBE0C8", "843C0C"), "tim": ("E4DFEC", "5B3F86"), "kho_doi": ("EDEDED", "595959")}
+TEN_DC = {"khop": "Khớp", "do": "ĐỎ", "vang": "VÀNG", "cam": "CAM", "tim": "TÍM", "kho_doi": "Khó đòi"}
+
+
+def _cot_doi_chieu(ws) -> None:
+    c = len(th.COT) + 1
+    o = ws.cell(row=th.DONG_TIEU_DE, column=c, value=th.COT_DOI_CHIEU[0])
+    goc = ws.cell(row=th.DONG_TIEU_DE, column=len(th.COT))
+    o._style = copy(goc._style)
+    ws.column_dimensions[get_column_letter(c)].width = th.COT_DOI_CHIEU[1]
+
+
+def chu_doi_chieu(dc: dict) -> str:
+    if not dc:
+        return ""
+    if dc["mau"] == "khop":
+        return "Khớp"
+    if dc["mau"] == "kho_doi":
+        return f"Khó đòi · {dc['goi_y']}"
+    return f"{TEN_DC[dc['mau']]} · lệch {dc['lech']:,.0f} · {dc['goi_y']}"
+
+
+def _o_doi_chieu(ws, hang: int, dc: dict, kieu_vien) -> None:
+    o = ws.cell(row=hang, column=len(th.COT) + 1, value=chu_doi_chieu(dc) or None)
+    o.border = kieu_vien
+    o.alignment = Alignment(vertical="top", wrap_text=True)
+    if dc:
+        nen, chu = MAU_DC[dc["mau"]]
+        o.fill = PatternFill("solid", fgColor=nen)
+        o.font = Font(name=th.PHONG_NOI_DUNG, size=9, bold=dc["mau"] not in ("khop", "kho_doi"), color=chu)
+
+
+def _ghi_dong_con(ws, d: DongBaoCao, hang: int, kieu_vien, n_cot: Optional[int] = None) -> int:
+    """Các dòng con (đang gập) dưới một khách: mỗi job SMS còn nợ một dòng — ai phụ trách,
+    còn bao nhiêu, nằm ở nhóm tuổi nào — và một dòng cân đối. Cộng các dòng con theo từng cột
+    đúng bằng dòng khách (nhóm tuổi phân bổ: nợ cũ và job cũ nhận nhóm già trước)."""
+    n_cot = n_cot or len(th.COT)
+
+    def _nhan(g):
+        if g.get("so_hd"):                    # v0.5: job từ Misa — số hoá đơn, ngày, trạng thái
+            return f"{NHAN_CON}{g['job']} · HĐ {g['so_hd']} ngày {g['ngay']:%d/%m/%Y}"
+        return (f"{NHAN_CON}{g['job']}" + (f" · {g['nguon_ngay']} {g['ngay']:%d/%m/%Y}" if g["ngay"] else "")
+                + (" · theo bảng FIN" if g.get("tham_chieu") else ""))
+    con = [(_nhan(g), g["tien"], g["sales"], g["job"], g.get("nhom") or [0.0] * 6,
+            g.get("trang_thai") or ("Nợ cũ – bảng FIN" if g.get("tham_chieu") else ""))
+           for g in d.dong_con]
+    if d.can_doi:
+        nhan = ("Nợ cũ / chưa có job trên SMS" if d.can_doi > 0 else
+                "SMS ghi dư — đã thu, chưa gạch paid (xem Review)")
+        con.append((f"{NHAN_CON}{nhan}", d.can_doi, "", "", d.can_doi_nhom or [0.0] * 6, ""))
+    for ten, tien, sale, job, nhom, tt in con:
+        o_tuoi = [(6 + i, v if abs(v) > 0.4 else None) for i, v in enumerate(nhom)]
+        them = [(len(th.COT) + 1, tt or None)] if n_cot > len(th.COT) else []
+        for cot, v in ((3, ten), (5, tien), (12, sale), (13, job), *o_tuoi, *them):
+            o = ws.cell(row=hang, column=cot, value=v)
+            o.font = Font(name=th.PHONG_NOI_DUNG, size=9, color="595959",
+                          italic=not job)
+            if 5 <= cot <= 11:
+                o.number_format = DINH_DANG_TIEN
+                o.alignment = Alignment(horizontal="right")
+        for cot in range(1, n_cot + 1):
+            o = ws.cell(row=hang, column=cot)
+            o.fill = PatternFill("solid", fgColor="F7F5FB")
+            o.border = kieu_vien
+        ws.row_dimensions[hang].outlineLevel = 1
+        ws.row_dimensions[hang].hidden = True
+        hang += 1
+    return hang
 
 
 def _ghi_sheet_xem_lai(wb, dong: List[DongBaoCao], ngay_chot: dt.date, tong_misa,
@@ -145,6 +247,12 @@ def _ghi_sheet_xem_lai(wb, dong: List[DongBaoCao], ngay_chot: dt.date, tong_misa
         hang += 1
     if nguon:
         hang += 1
+    for canh_bao in doi_chieu.get("canh_bao") or []:
+        o = ws.cell(row=hang, column=1, value=f"CẢNH BÁO: {canh_bao}")
+        o.font = Font(name=th.PHONG_NOI_DUNG, size=10, bold=True, color="C00000")
+        hang += 1
+    if doi_chieu.get("canh_bao"):
+        hang += 1
 
     _dong_doi_chieu("Tổng bảng báo cáo này", tong_bang,
                     "Phải bằng dòng ngay dưới. Lệch là tool có lỗi.")
@@ -177,7 +285,25 @@ def _ghi_sheet_xem_lai(wb, dong: List[DongBaoCao], ngay_chot: dt.date, tong_misa
                         value="Tổng hợp | Tuổi nợ").font = Font(name=th.PHONG_NOI_DUNG, size=9,
                                                                 italic=True)
                 hang += 1
-    if doi_chieu.get("che_do") == "sms":
+    if doi_chieu.get("che_do") == "hoa-don":
+        hang += 1
+        tong_nguon: Dict[str, float] = {}
+        for d in dong:
+            for k, v in d.phan_nguon.items():
+                tong_nguon[k] = tong_nguon.get(k, 0) + v
+        _dong_doi_chieu("Tuổi nợ tính từ đâu", tong_bang, "Bằng các dòng dưới cộng lại.")
+        for k, nhan, giai_thich, mau in (
+            ("hoa-don", "  · hoá đơn trong file Chi tiết 131", "Ngày hoá đơn + credit term. Phiếu thu ghi "
+             "số hoá đơn thì trừ đúng hoá đơn đó, còn lại trừ hoá đơn cũ nhất trước.", "000000"),
+            ("kho-doi", "  · khó đòi", "Luôn ở nhóm 120+ (bảng ghép khách hoặc lý do ghi 'khó đòi').",
+             "000000"),
+            ("ngoai-le", "  · ngoại lệ kế toán khai", "", "000000"),
+            ("uoc-tinh", "  · Tổng hợp nhiều hơn Chi tiết", "Phần chênh tạm coi là nợ mới (Current). "
+             "Thường do hai file xuất khác thời điểm — xem bảng đối chiếu bên dưới.", "C00000"),
+        ):
+            if tong_nguon.get(k, 0) >= 1:
+                _dong_doi_chieu(nhan, tong_nguon[k], giai_thich, mau)
+    elif doi_chieu.get("che_do") == "sms":
         hang += 1
         tong_nguon: Dict[str, float] = {}
         for d in dong:
@@ -295,6 +421,24 @@ def _bang_khach_xem_lai(ws, dong, doi_chieu, hang) -> None:
                     c.number_format = DINH_DANG_TIEN
             hang += 1
 
+    for tieu, cot_gt, ds in doi_chieu.get("bang_them") or []:
+        if not ds:
+            continue
+        hang += 1
+        o = ws.cell(row=hang, column=1, value=tieu)
+        o.font = Font(name=th.PHONG_TIEU_DE, size=10, bold=True, color=th.CAM)
+        hang += 1
+        for i, t in enumerate(cot_gt, start=1):
+            ws.cell(row=hang, column=i, value=t).font = Font(name=th.PHONG_NOI_DUNG, size=9, bold=True)
+        hang += 1
+        for vals in ds:
+            for i, v in enumerate(vals, start=1):
+                c = ws.cell(row=hang, column=i, value=v)
+                c.font = Font(name=th.PHONG_NOI_DUNG, size=10)
+                if isinstance(v, (int, float)) and i > 1:
+                    c.number_format = DINH_DANG_TIEN
+            hang += 1
+
     hang += 1
     thieu_term = sum(1 for d in dong if any("Credit Term" in x for x in d.thieu_thong_tin))
     thieu_sale = sum(1 for d in dong if any("Salesman" in x for x in d.thieu_thong_tin))
@@ -319,8 +463,8 @@ ANH_XA_NHOM = {
 def _tim_bang(wb):
     """Tìm sheet và dòng tiêu đề của bảng công nợ: sheet Receivable của mẫu chuẩn,
     hoặc sheet bất kỳ (VD 'data' trong bản final kế toán trưởng)."""
-    thu_tu = (["Receivable"] if "Receivable" in wb.sheetnames else []) + \
-             [n for n in wb.sheetnames if n != "Receivable"]
+    uu_tien = [n for n in ("Receivables", "Receivable") if n in wb.sheetnames]
+    thu_tu = uu_tien + [n for n in wb.sheetnames if n not in uu_tien]
     for ten in thu_tu:
         ws = wb[ten]
         for r, hang in enumerate(ws.iter_rows(min_row=1, max_row=15, values_only=True), start=1):
@@ -330,25 +474,37 @@ def _tim_bang(wb):
     return None, None
 
 
+def co_tab_review(duong_dan: Path) -> bool:
+    """Báo cáo do tool sinh luôn có tab Review; bản kế toán trưởng tự làm thì không."""
+    wb = openpyxl.load_workbook(duong_dan, read_only=True)
+    try:
+        return th.SHEET_REVIEW in wb.sheetnames or "Cần xem lại" in wb.sheetnames
+    finally:
+        wb.close()
+
+
 def ngay_chot_trong_file(duong_dan: Path) -> Optional[dt.date]:
-    """Ngày chốt của một báo cáo tuần: 'Reporting period dd/mm/yyyy - dd/mm/yyyy'
-    (lấy ngày sau) trong bản final, hoặc 'At 26 Sep 2026' ở ô A3 của mẫu chuẩn."""
+    """Ngày chốt của một báo cáo tuần. Ưu tiên 'At 03 Oct 2026' (mẫu chuẩn, mọi sheet của tool);
+    không có thì lấy ngày sau trong 'Reporting period dd/mm/yyyy - dd/mm/yyyy' (bản final cũ).
+    Phải ưu tiên 'At': sheet Summary ghi cả hai trên một dòng, mà ngày cuối kỳ (02/10) KHÁC
+    ngày chốt (03/10) — đọc nhầm là tạo ra một "tuần trước" giả cách một ngày."""
     wb = openpyxl.load_workbook(duong_dan, read_only=True, data_only=True)
+    ky = None
     try:
         for ws in wb.worksheets:
             for hang in ws.iter_rows(min_row=1, max_row=12, values_only=True):
                 chu = " ".join(str(v) for v in hang if v is not None)
-                if "period" in chu.lower() or "kỳ" in chu.lower():
-                    ngay = re.findall(r"(\d{1,2})/(\d{1,2})/(\d{4})", chu)
-                    if ngay:
-                        d, m, y = ngay[-1]
-                        return dt.date(int(y), int(m), int(d))
                 m = re.search(r"\bAt (\d{1,2}) (\w{3}) (\d{4})", chu)
                 if m and m.group(2) in THANG_EN:
                     return dt.date(int(m.group(3)), THANG_EN.index(m.group(2)) + 1, int(m.group(1)))
+                if ky is None and ("period" in chu.lower() or "kỳ" in chu.lower()):
+                    ngay = re.findall(r"(\d{1,2})/(\d{1,2})/(\d{4})", chu)
+                    if ngay:
+                        d, mth, y = ngay[-1]
+                        ky = dt.date(int(y), int(mth), int(d))
     finally:
         wb.close()
-    return None
+    return ky
 
 
 def doc_bao_cao(duong_dan: Path) -> Dict[str, sg.HoSoKhach]:
@@ -378,7 +534,7 @@ def doc_bao_cao(duong_dan: Path) -> Dict[str, sg.HoSoKhach]:
             cot["total"] = c.column
         elif "salesman" in ten and "salesman" not in cot:
             cot["salesman"] = c.column
-        elif ten in ("job", "job no", "số job"):
+        elif ten in ("job", "job no", "số job", "job number"):
             cot["job"] = c.column
         elif "ghi chú" in ten or ten in ("comment", "notes", "note"):
             cot["ghi_chu"] = c.column
@@ -391,6 +547,8 @@ def doc_bao_cao(duong_dan: Path) -> Dict[str, sg.HoSoKhach]:
         ma = ws.cell(row=r, column=cot.get("ma", 2)).value
         if not ten or str(ma or "").strip().upper().startswith(("TỔNG", "TONG")):
             continue
+        if str(ten).strip().startswith("└"):
+            continue                 # dòng con (job) dưới một khách, không phải khách
         if chuan_hoa_ten(ten) in ("TOTAL", "TỔNG", "TỔNG CỘNG", "GRAND TOTAL"):
             continue
         total = ws.cell(row=r, column=cot["total"]).value
@@ -407,7 +565,9 @@ def doc_bao_cao(duong_dan: Path) -> Dict[str, sg.HoSoKhach]:
         job = re.sub(r"(?i)^\s*job\s*:\s*", "", lay("job")) or job_gc
         ra[tc] = sg.HoSoKhach(
             ma=str(ma or "").strip(), ten=str(ten).strip(), credit_term=lay("term"),
-            salesman=lay("salesman"), ghi_chu=ghi_chu, ly_do=lay("ly_do"),
+            salesman=th.ten_sales(lay("salesman")), ghi_chu=ghi_chu,
+            # câu tool tự viết không phải lời của Sales: đọc lại thì coi như trống
+            ly_do="" if lay("ly_do").startswith(th.NHAN_TU_DONG) else lay("ly_do"),
             tong=round(float(total), 2), nhom=[round(v, 2) for v in nhom], nguon="ban-tay",
             job=job,
         )

@@ -2,13 +2,15 @@
 """Tool báo cáo công nợ tuần — điểm chạy.
 
 Lịch chạy nền gọi:
-    python runner.py                 quét thư mục input, thấy đủ 3 file (2 Misa + 1 SMS) thì chạy
+    python runner.py                 quét thư mục input, thấy đủ 4 file thì chạy:
+                                     Tổng hợp 131 + Chi tiết 131 (từ 2022) + Tổng hợp 331 + SMS
 
 Kiểm tra file ghép khách (nút 2_Kiem_tra_ghep_khach.bat):
     python runner.py --kiem-tra-ghep-khach
 
 Chạy tay khi thử nghiệm:
-    python runner.py --tong-hop A.xlsx --tuoi-no B.xlsx [--sms C.xlsx --ghep D.xlsx] --ra <thư mục>
+    python runner.py --tong-hop A.xlsx --chi-tiet B.xlsx [--phai-tra C.xlsx --sms D.xlsx] --ra <thư mục>
+    python runner.py --tong-hop A.xlsx --tuoi-no B.xlsx [--sms C.xlsx --ghep D.xlsx] --ra <thư mục>  (v0.3)
     python runner.py --nap-bao-cao "2026_W36_....xlsx" --ngay-chot 2026-09-05
     python runner.py --ngoai-le "TEN KHACH" --nhom "1 - 30" --vi-sao "lô tàu chìm"
     python runner.py --credit-term "TEN KHACH" --gia-tri "15 days"
@@ -21,6 +23,9 @@ Chạy tay khi thử nghiệm:
 """
 from __future__ import annotations
 
+import sys as _sys
+_sys.dont_write_bytecode = True          # thay cho PYTHONDONTWRITEBYTECODE trong chay_nen.bat cũ
+
 import argparse
 import datetime as dt
 import os
@@ -32,15 +37,17 @@ from typing import List, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from wr import baocao, caidat, ghep, misa
+from wr import banhang, baocao, caidat, chitiet, ghep, ghifull, misa, tindung
 from wr import soghi as sg
 from wr import tinhtoan
 from wr.misa import LoiDocFile, chuan_hoa_ten
 
 # Mặc định ghi cạnh mã nguồn; có thư mục đích rồi thì chuyển vào đó.
 NHAT_KY = Path(__file__).resolve().parent / "log" / "runner.log"
-# Kế toán thả 2 file Misa trước, file SMS sau: chờ tối đa chừng này rồi mới chạy thiếu SMS
+# Kế toán thả file Misa trước, file SMS / phải trả sau: chờ tối đa chừng này rồi mới chạy thiếu
 CHO_SMS_GIAY = 2 * 3600
+# Các file mỗi tuần phải xuất cùng lúc; cách nhau hơn chừng này thì cảnh báo ở tab Review
+LECH_XUAT_GIAY = 24 * 3600
 
 
 def dat_nhat_ky(duong_dan: Path) -> None:
@@ -137,13 +144,23 @@ def nap_ban_tay(thu_muc: Path, so: sg.SoGhi) -> int:
                 ghi_log(f"  ! {f.name}: không thấy ngày chốt (dòng 'Reporting period dd/mm/yyyy - "
                         "dd/mm/yyyy' hoặc 'At dd Mon yyyy'), chưa nạp")
                 continue
+            ban_nguoi = not baocao.co_tab_review(f)
+            cu = so.nguon_trang.get(ngay.isoformat())
+            if cu and cu.get("ban_nguoi") and not ban_nguoi and cu.get("file") != f.name:
+                # WR-04: bản người làm (không có tab Review) luôn thắng bản tool cùng ngày chốt
+                so.da_nap[f.name] = dau
+                ghi_log(f"  {f.name}: cùng ngày chốt {ngay:%d/%m/%Y} với bản người làm "
+                        f"{cu.get('file')} — giữ bản người làm")
+                continue
             k = baocao.nap_vao_so_ghi(so, f, ngay)
         except Exception as loi:
             ghi_log(f"  ! Không đọc được bản final {f.name}: {loi}")
             continue
         so.da_nap[f.name] = dau
+        so.nguon_trang[ngay.isoformat()] = {"file": f.name, "ban_nguoi": ban_nguoi}
         n += 1
-        ghi_log(f"Đã đọc lại báo cáo {f.name}: {k} khách, chốt {ngay:%d/%m/%Y} — tuần sau tính tiếp từ bản này")
+        ghi_log(f"Đã đọc lại báo cáo {f.name}: {k} khách, chốt {ngay:%d/%m/%Y}"
+                f"{' (bản người làm)' if ban_nguoi else ''} — tuần sau tính tiếp từ bản này")
     return n
 
 
@@ -230,8 +247,254 @@ def chay_mot_lan(
     return dich
 
 
+def chay_full(
+    duong_tong_hop: Path,
+    duong_chi_tiet: Path,
+    thu_muc_ra: Path,
+    duong_so_ghi: Path,
+    mau_chuan: Path,
+    duong_phai_tra: Optional[Path] = None,
+    duong_sms: Optional[Path] = None,
+    thu_muc_ghep: Optional[Path] = None,
+    duong_ghep: Optional[Path] = None,
+    duong_ban_hang: Optional[Path] = None,
+    duong_so_ct: Optional[Path] = None,
+) -> Path:
+    """v0.4 — full credit report từ 4 file (WR-04). v0.5 — thêm Bán hàng + Sổ chi tiết TK131 (WR-06):
+    job chưa thanh toán lấy từ Misa, đối chiếu với dư nợ từng khách."""
+    th = misa.doc_tong_hop(duong_tong_hop)
+    ct = chitiet.doc_chi_tiet(duong_chi_tiet)
+    if ct.den_ngay != th.den_ngay:
+        raise LoiDocFile(
+            "File Chi tiết và file Tổng hợp phải thu không cùng ngày cuối kỳ, dừng để khỏi ra số sai.\n"
+            f"  Tổng hợp: đến {th.den_ngay:%d/%m/%Y} · Chi tiết: đến {ct.den_ngay:%d/%m/%Y}")
+    canh_bao: List[str] = []
+    if ct.tu_ngay > dt.date(2022, 1, 1):
+        canh_bao.append(f"File Chi tiết 131 chỉ có từ {ct.tu_ngay:%d/%m/%Y}: hoá đơn cũ hơn không có ngày, "
+                        "tuổi nợ của phần đó bị tính trẻ hơn thực tế. FIN xuất lại từ 01/01/2022.")
+    pt = None
+    if duong_phai_tra:
+        pt = misa.doc_phai_tra(duong_phai_tra)
+        if pt.den_ngay != th.den_ngay:
+            canh_bao.append(f"File phải trả {Path(duong_phai_tra).name} đến ngày {pt.den_ngay:%d/%m/%Y}, "
+                            f"khác kỳ phải thu ({th.den_ngay:%d/%m/%Y}) — không dùng.")
+            pt = None
+    else:
+        canh_bao.append("Không có file Tổng hợp công nợ phải trả (TK331) — sheet Payable để trống.")
+
+    so = sg.SoGhi(duong_so_ghi)
+    ngay_chot = th.den_ngay + dt.timedelta(days=1)
+    truoc = so.ngay_trang_truoc(ngay_chot)
+    if truoc is None:
+        ghi_log("  ! Sổ ghi chưa có tuần nào trước — không so được với tuần trước (cột Last week trống)")
+        canh_bao.append("Chưa có báo cáo tuần trước trong sổ ghi: các cột so sánh tuần trước để trống, "
+                        "dấu hiệu S1-S3 chưa tin được.")
+    elif (ngay_chot - truoc).days > 10:
+        canh_bao.append(f"Báo cáo tuần trước gần nhất là {truoc:%d/%m/%Y}, cách {(ngay_chot - truoc).days} "
+                        "ngày: cột 'Last week' là của tuần đó.")
+
+    dong_sms, bang, f_ghep = [], None, None
+    if duong_sms:
+        dong_sms = ghep.doc_sms(duong_sms)
+        f_ghep = Path(duong_ghep) if duong_ghep else ghep.tim_file_ghep(thu_muc_ghep)
+        bang = ghep.doc_bang_ghep(f_ghep) if f_ghep else None
+        if bang is None:
+            ghi_log("  ! Chưa có file ghép khách trong thư mục sample — chỉ ghép được khách trùng tên/mã")
+    else:
+        canh_bao.append("Không có file SMS: Job Number và Salesman lấy từ báo cáo tuần trước.")
+
+    files = [Path(f) for f in (duong_tong_hop, duong_chi_tiet, duong_phai_tra, duong_sms) if f]
+    gio = [f.stat().st_mtime for f in files]
+    if max(gio) - min(gio) > LECH_XUAT_GIAY:
+        canh_bao.append("Các file đầu vào tải về cách nhau hơn 1 ngày — số Misa đổi theo lúc xuất, "
+                        "nên xuất cả 4 file cùng lúc.")
+
+    thu_muc_mau = Path(duong_ghep).parent if duong_ghep else thu_muc_ghep
+    job_no_cu = ghep.doc_job_no_cu(thu_muc_mau)
+    job_misa = None
+    if duong_ban_hang:
+        job_misa = banhang.doc_job_misa(duong_ban_hang, duong_so_ct, [(k.ma, k.ten) for k in th.dong.values()])
+        if job_misa is None:
+            canh_bao.append(f"File Bán hàng {Path(duong_ban_hang).name} không có hoá đơn nào — dùng job từ SMS.")
+        else:
+            files += [Path(f) for f in (duong_ban_hang, duong_so_ct) if f]
+            if not job_misa.co_job:
+                canh_bao.append("Có file Bán hàng nhưng thiếu Sổ chi tiết TK131: biết hoá đơn nào chưa thanh "
+                                "toán nhưng không biết job nào.")
+            if job_misa.den_ngay < th.den_ngay - dt.timedelta(days=7):
+                canh_bao.append(f"File Bán hàng chỉ có tới {job_misa.den_ngay:%d/%m/%Y}, kỳ báo cáo tới "
+                                f"{th.den_ngay:%d/%m/%Y}: FIN xuất lại cùng lúc với các file khác.")
+    elif duong_so_ct:
+        canh_bao.append("Có Sổ chi tiết TK131 nhưng thiếu file Bán hàng: chưa biết trạng thái thanh toán, "
+                        "job vẫn lấy từ SMS.")
+    else:
+        canh_bao.append("Không có file Bán hàng + Sổ chi tiết TK131: job lấy từ SMS (cách cũ), chưa có cột "
+                        "Đối chiếu.")
+    kq = tindung.tinh_full(th, ct, so, dong_sms, bang, pt, ngay_chot, job_no_cu=job_no_cu, job_misa=job_misa)
+    # Lịch sử tuần: tuần đầu dùng v0.4 thì dựng lại điểm của tuần trước từ báo cáo cũ (sổ ghi)
+    truoc_ngay = so.ngay_trang_truoc(ngay_chot)
+    if (truoc_ngay and (ngay_chot - truoc_ngay).days >= 5
+            and truoc_ngay.isoformat() not in so.lich_su_tuan and kq.chi_so_truoc):
+        den_cu = truoc_ngay - dt.timedelta(days=1)
+        so.lich_su_tuan[truoc_ngay.isoformat()] = {**kq.chi_so_truoc, "ngay_chot": truoc_ngay.isoformat(),
+                                                  "tuan": f"W{den_cu.isocalendar()[1]:02d}",
+                                                  "den_ngay": den_cu.isoformat(), "tu_bao_cao_cu": True}
+    so.lich_su_tuan[ngay_chot.isoformat()] = kq.chi_so
+    lich_su = [v for k, v in sorted(so.lich_su_tuan.items()) if dt.date.fromisoformat(k) <= ngay_chot]
+
+    dich = thu_muc_ra / baocao.ten_file_bao_cao(th.tu_ngay, th.den_ngay)
+    if dich.exists():
+        # Báo cáo cũ của tuần này có thể đã được kế toán sửa tay: không ghi đè (RULES 5.1)
+        dich = dich.with_name(f"{dich.stem} (chay lai {dt.datetime.now():%d-%m %Hh%M}){dich.suffix}")
+    ky = f"{th.tu_ngay:%d/%m/%Y} - {th.den_ngay:%d/%m/%Y}"
+    nguon = [_mo_ta(f) for f in files] + ([f"Bảng ghép khách: {f_ghep.name}"] if f_ghep else [])
+
+    bang_them = [
+        ("File Chi tiết 131 và Tổng hợp 131 lệch nhau — tiền theo Tổng hợp",
+         ("Khách hàng", "Tổng hợp", "Chi tiết", "Chênh"),
+         [(t, a, b, a - b) for t, a, b in kq.lech_chi_tiet]),
+        ("Phải thu nhập bổ sung cho kỳ trước — dư đầu kỳ Misa khác dư cuối báo cáo tuần trước",
+         ("Khách hàng", "Báo cáo tuần trước", "Dư đầu kỳ Misa", "Chênh"),
+         [(r.ten, r.tt_total, r.dau_ky, r.nhap_bo_sung) for r in kq.rui_ro
+          if r.nhap_bo_sung is not None and abs(r.nhap_bo_sung) >= 1]),
+        ("Khách trả trước (dư Có TK131) — không đưa vào Receivables",
+         ("Khách hàng", "Dư Có", "Mã", ""),
+         [(k.ten, k.du_co, k.ma, "") for k in th.dong.values() if k.du_co > 0.5]),
+        ("Vendor mình trả trước (dư Nợ TK331) — không đưa vào Payable",
+         ("Vendor", "Dư Nợ", "Mã", ""), [(t, v, m, "") for m, t, v in kq.vendor_tra_truoc]),
+    ]
+    if kq.job_misa:
+        # v0.5 (WR-06): lệnh báo cho FIN — gom theo màu, kèm gợi ý nguyên nhân
+        for mau, tieu in (("do", "ĐỎ — tổng job chưa thanh toán LỚN hơn dư nợ: đã thu chưa đối trừ, hoặc "
+                                 "thanh toán một phần Misa chưa tự trừ"),
+                          ("vang", "VÀNG — lệch nhỏ: nghi quên đánh giá chênh lệch tỷ giá"),
+                          ("cam", "CAM — dư nợ LỚN hơn tổng job chưa thanh toán: nợ chưa gắn job (nợ cũ → "
+                                  "bảng job nợ cũ) hoặc hoá đơn chưa lên Bán hàng")):
+            ds = [d for d in kq.dong if d.doi_chieu.get("mau") == mau]
+            bang_them.append((tieu, ("Khách hàng", "Dư nợ Misa", "Tổng job chưa TT", "Lệch"),
+                              [(d.ten, d.total, d.doi_chieu["tong_job"], d.doi_chieu["lech"])
+                               for d in sorted(ds, key=lambda d: -abs(d.doi_chieu["lech"]))]))
+        bang_them.append(("ĐỎ — Misa đã hết nợ nhưng hoá đơn vẫn ghi chưa thanh toán: đối trừ trên Misa",
+                          ("Khách hàng", "Số hoá đơn", "Tiền ghi chưa TT", ""),
+                          [(t, n, v, "") for t, n, v in kq.het_no_con_hd]))
+        bang_them.append(("TÍM — tên khách trên file Bán hàng không tìm thấy trên Misa: kiểm tra tên",
+                          ("Khách hàng", "Số hoá đơn", "Tiền ghi chưa TT", ""),
+                          [(t, n, v, "") for t, n, v in kq.ten_khong_ghep]))
+
+    def them_sheet(wb):
+        ghifull.ghi_summary(wb, kq, ngay_chot, lich_su)
+        ghifull.ghi_risk(wb, kq, ngay_chot)
+        ghifull.ghi_payable(wb, kq, ngay_chot, ky)
+        ghifull.ghi_cash(wb, kq, ngay_chot, ky)
+        ghifull.ghi_invoices(wb, kq, ngay_chot)
+        ghifull.ghi_methodology(wb, ngay_chot, nguon)
+        ghifull.sap_xep(wb)
+
+    baocao.ghi_bao_cao(
+        kq.dong, ngay_chot, mau_chuan, dich, tong_misa=th.tong_du_no,
+        doi_chieu={
+            "che_do": "hoa-don", "canh_bao": canh_bao, "da_bo": kq.da_bo,
+            "sms_cat": kq.sms_cat, "sms_khong_misa": kq.sms_khong_misa,
+            "sms_chua_ghep": kq.sms_chua_ghep, "bang_them": bang_them,
+            "nguon": [("Nguồn dữ liệu", nguon[0])] + [("", n) for n in nguon[1:]] +
+                     [("", "Số Misa thay đổi theo thời điểm xuất. Chỉ so với bản làm tay khi "
+                           "cả hai dùng cùng một lần xuất.")],
+        },
+        them_sheet=them_sheet,
+    )
+
+    trang_cu = so.trang.get(ngay_chot.isoformat()) or {}
+    if any(v.nguon == "ban-tay" for v in trang_cu.values()):
+        ghi_log(f"  Sổ ghi ngày {ngay_chot:%d/%m/%Y} đã lấy từ báo cáo trong thư mục gốc, giữ nguyên")
+    else:
+        so.ghi_trang(ngay_chot, {d.ten_chuan: tinhtoan.thanh_ho_so(d) for d in kq.dong})
+    if pt is not None:
+        so.phai_tra[ngay_chot.isoformat()] = {v.ma: round(v.du_co, 2) for v in pt.dong if v.du_co > 0.5}
+    so.ghi()
+    for c in canh_bao:
+        ghi_log(f"  ! {c}")
+    cs = kq.chi_so
+    ghi_log(f"  -> {dich.name}: {len(kq.dong)} khách, phải thu {cs['tong_phai_thu']:,.0f}, "
+            f"quá hạn {cs['qua_han']:,.0f}, nợ xấu {cs['no_xau']:,.0f}"
+            + (f", phải trả {cs['tong_phai_tra']:,.0f}" if "tong_phai_tra" in cs else ""))
+    return dich
+
+
+TEN_TAC_VU = "Bao cao cong no tuan"
+
+
+def sua_lich_chay_an() -> None:
+    """Máy cài trước 09/10: Task Scheduler gọi chay_nen.bat nên mỗi lần chạy bật cửa sổ CMD.
+    Tự đổi sang gọi thẳng pythonw.exe một lần, người dùng không phải cài lại."""
+    if os.name != "nt":
+        return
+    import subprocess
+    try:
+        hien = subprocess.run(["schtasks", "/query", "/tn", TEN_TAC_VU, "/xml"], capture_output=True,
+                              check=False, creationflags=0x08000000)
+        raw = hien.stdout or b""
+        xml = raw.decode("utf-16", "ignore") if b"\x00" in raw[:200] else raw.decode("utf-8", "ignore")
+        if hien.returncode != 0 or "chay_nen.bat" not in xml.lower():
+            return
+        pythonw = Path(sys.executable).with_name("pythonw.exe")
+        trinh_chay = pythonw if pythonw.exists() else Path(sys.executable)
+        doi = subprocess.run(["schtasks", "/change", "/tn", TEN_TAC_VU, "/tr",
+                              f'"{trinh_chay}" "{Path(__file__).resolve()}"'],
+                             capture_output=True, text=True, check=False, creationflags=0x08000000)
+        ghi_log("  Đã đổi lịch chạy nền sang chạy ẩn (không bật cửa sổ CMD)" if doi.returncode == 0 else
+                f"  ! Không đổi được lịch chạy ẩn: {(doi.stderr or doi.stdout).strip()[:200]}")
+    except Exception as loi:      # không bao giờ để việc phụ này làm hỏng lần chạy chính
+        ghi_log(f"  ! Không đổi được lịch chạy ẩn: {loi}")
+
+
+DASHBOARD = Path(__file__).resolve().parent / "dashboard" / "Credit_Dashboard.html"
+
+
+def cap_nhat_dashboard(thu_muc: Path) -> None:
+    """Đặt Credit_Dashboard.html ở thư mục gốc workspace, cạnh báo cáo tuần (WR-05).
+    Bản trong mã nguồn mới hơn thì chép đè; không có gì đổi thì để nguyên."""
+    if not DASHBOARD.exists():
+        return
+    dich = Path(thu_muc) / DASHBOARD.name
+    try:
+        if not dich.exists() or dich.read_bytes() != DASHBOARD.read_bytes():
+            import shutil
+            shutil.copyfile(DASHBOARD, dich)
+            ghi_log(f"  Đã đặt {DASHBOARD.name} vào thư mục gốc — mở bằng trình duyệt, kéo báo cáo tuần vào")
+    except OSError as loi:
+        ghi_log(f"  ! Không chép được dashboard: {loi}")
+
+
+def _phan_loai(files: List[Path]):
+    """Nhận dạng từng file theo nội dung. Trả về dict loại -> [(ngày cuối kỳ, file)]."""
+    ra = {"sms": [], "tong-hop": [], "chi-tiet": [], "phai-tra": [], "tuoi-no": [], "ban-hang": [],
+          "so-chi-tiet": [], "la": []}
+    for f in files:
+        try:
+            if ghep.la_file_sms(f):
+                ra["sms"].append((None, f))
+                continue
+            loai = misa.nhan_dang(f)
+            if loai == "tong-hop":
+                ra[loai].append((misa.doc_tong_hop(f).den_ngay, f))
+            elif loai == "chi-tiet":
+                ra[loai].append((chitiet.ky_cua(f)[1], f))
+            elif loai == "phai-tra":
+                ra[loai].append((misa.doc_phai_tra(f).den_ngay, f))
+            elif loai == "tuoi-no":
+                ra[loai].append((misa.doc_tuoi_no(f).den_ngay, f))
+            elif loai in ("ban-hang", "so-chi-tiet"):
+                ra[loai].append((None, f))
+            else:
+                ra["la"].append((f, "không nhận ra là file Misa hay SMS nào"))
+        except Exception as loi:
+            ra["la"].append((f, str(loi)))
+    return ra
+
+
 def quet_thu_muc(cfg: caidat.CauHinh) -> int:
     cfg.tao_cac_thu_muc()
+    cap_nhat_dashboard(cfg.ra)
     files = [f for f in sorted(cfg.vao.glob("*.xlsx"))
              if not f.name.startswith(("[DONE]", "[LOI]", "~$"))]
     if not files:
@@ -241,41 +504,91 @@ def quet_thu_muc(cfg: caidat.CauHinh) -> int:
     if nap_ban_tay(cfg.ban_tay, so):
         so.ghi()
 
-    ds_sms = [f for f in files if ghep.la_file_sms(f)]
-    cap, la = _ghep_cap([f for f in files if f not in ds_sms])
-    for f, vi_sao in la:
+    pl = _phan_loai(files)
+    for f, vi_sao in pl["la"]:
         ghi_log(f"  Bỏ qua {f.name}: {vi_sao}")
-    if not cap:
-        ghi_log(f"Chưa có cặp file Misa nào đủ để chạy. Đang có: {[f.name for f in files]}")
-        return 0
+    ds_sms = [f for _, f in pl["sms"]]
     sms = max(ds_sms, key=lambda f: f.stat().st_mtime) if ds_sms else None
+    moi = lambda loai: (max((f for _, f in pl[loai]), key=lambda f: f.stat().st_mtime)
+                        if pl[loai] else None)
+    ban_hang, so_ct = moi("ban-hang"), moi("so-chi-tiet")
+
+    # v0.4: Tổng hợp 131 + Chi tiết 131 cùng ngày cuối kỳ
+    viec = []   # (ngày, loại, các file)
+    ct_theo_ngay = {n: f for n, f in sorted(pl["chi-tiet"], key=lambda x: x[1].stat().st_mtime)}
+    tra_theo_ngay = {n: f for n, f in sorted(pl["phai-tra"], key=lambda x: x[1].stat().st_mtime)}
+    th_cu = []
+    for n, f in sorted(pl["tong-hop"]):
+        if n in ct_theo_ngay:
+            viec.append((n, "full", (f, ct_theo_ngay.pop(n), tra_theo_ngay.pop(n, None))))
+        else:
+            th_cu.append(f)
+    for n, f in ct_theo_ngay.items():
+        ghi_log(f"  Bỏ qua {f.name}: chưa có file Tổng hợp phải thu đến ngày {n:%d/%m/%Y} đi kèm")
+    for n, f in tra_theo_ngay.items():
+        ghi_log(f"  Bỏ qua {f.name}: chưa có file Tổng hợp + Chi tiết phải thu đến ngày {n:%d/%m/%Y} đi kèm")
+    # v0.3: Tổng hợp + Tuổi nợ (giữ để không gãy khi FIN còn thả file cũ)
+    if th_cu or pl["tuoi-no"]:
+        cap, la = _ghep_cap(th_cu + [f for _, f in pl["tuoi-no"]])
+        for f, vi_sao in la:
+            if not (f in th_cu and not pl["tuoi-no"]):
+                ghi_log(f"  Bỏ qua {f.name}: {vi_sao}")
+        viec += [(n, "v03", (a, b)) for n, a, b in cap]
+        for f in th_cu:
+            if not any(f in v[2] for v in viec):
+                ghi_log(f"  Bỏ qua {f.name}: chưa có file Chi tiết công nợ phải thu cùng kỳ đi kèm")
+    if not viec:
+        ghi_log(f"Chưa đủ file để chạy. Cần Tổng hợp 131 + Chi tiết 131 cùng kỳ. Đang có: "
+                f"{[f.name for f in files]}")
+        return 0
+    viec.sort(key=lambda v: v[0])
+
+    cuoi = viec[-1]
+    thieu = []
     if sms is None:
-        moi_nhat = max(f.stat().st_mtime for _, a, b in cap for f in (a, b))
+        thieu.append("SMS (AR-AP)")
+    if cuoi[1] == "full" and cuoi[2][2] is None:
+        thieu.append("Tổng hợp công nợ phải trả")
+    if cuoi[1] == "full" and ban_hang is None:
+        thieu.append("Bán hàng")
+    if cuoi[1] == "full" and so_ct is None:
+        thieu.append("Sổ chi tiết tài khoản 131")
+    if thieu:
+        moi_nhat = max(f.stat().st_mtime for f in cuoi[2] if f)
         if time.time() - moi_nhat < CHO_SMS_GIAY:
-            ghi_log("Đã có 2 file Misa, đang chờ file SMS (AR-AP). Tuần này không có SMS thì sau "
-                    f"{CHO_SMS_GIAY // 3600} giờ tool tự chạy theo luật cũ.")
+            ghi_log(f"Đã có file Misa phải thu, đang chờ: {', '.join(thieu)}. Không có thì sau "
+                    f"{CHO_SMS_GIAY // 3600} giờ tool tự chạy với những file đang có.")
             return 0
-        ghi_log("  ! Không có file SMS — chạy theo luật cũ (file Tuổi nợ + sổ ghi)")
-    if len(cap) > 1:
-        ghi_log(f"Có {len(cap)} kỳ trong thư mục, chạy lần lượt từ kỳ cũ nhất"
+        ghi_log(f"  ! Chạy thiếu: {', '.join(thieu)}")
+    if len(viec) > 1:
+        ghi_log(f"Có {len(viec)} kỳ trong thư mục, chạy lần lượt từ kỳ cũ nhất"
                 + (". File SMS chỉ dùng cho kỳ mới nhất" if sms else ""))
 
     xong = 0
-    for i, (ngay, duong_th, duong_tn) in enumerate(cap):
-        sms_ky = sms if i == len(cap) - 1 else None
-        ghi_log(f"Bắt đầu kỳ đến {ngay:%d/%m/%Y}: {duong_th.name} + {duong_tn.name}"
-                + (f" + {sms_ky.name}" if sms_ky else ""))
+    for i, (ngay, loai, ds) in enumerate(viec):
+        sms_ky = sms if i == len(viec) - 1 else None
+        bh_ky = ban_hang if i == len(viec) - 1 else None
+        sct_ky = so_ct if i == len(viec) - 1 else None
+        if loai != "full":
+            bh_ky = sct_ky = None
+        dung = [f for f in ds if f] + [f for f in (sms_ky, bh_ky, sct_ky) if f]
+        ghi_log(f"Bắt đầu kỳ đến {ngay:%d/%m/%Y}: " + " + ".join(f.name for f in dung))
         try:
-            chay_mot_lan(duong_th, duong_tn, cfg.ra, cfg.so_ghi, cfg.mau_chuan,
-                         duong_sms=sms_ky, thu_muc_ghep=cfg.ghep)
+            if loai == "full":
+                chay_full(ds[0], ds[1], cfg.ra, cfg.so_ghi, cfg.mau_chuan, duong_phai_tra=ds[2],
+                          duong_sms=sms_ky, thu_muc_ghep=cfg.ghep, duong_ban_hang=bh_ky, duong_so_ct=sct_ky)
+            else:
+                chay_mot_lan(ds[0], ds[1], cfg.ra, cfg.so_ghi, cfg.mau_chuan,
+                             duong_sms=sms_ky, thu_muc_ghep=cfg.ghep)
         except PermissionError as loi:
             ghi_log(f"  Tạm hoãn kỳ này: {loi}. Nhiều khả năng file kết quả đang "
                     "mở trong Excel. Đóng file đi, lần chạy sau tool làm tiếp.")
             continue
         except Exception as loi:  # không bao giờ để tiến trình chết im lặng
             ghi_log(f"  LỖI: {loi}")
-            for f in (duong_th, duong_tn):
-                _doi_ten(f, "[LOI]")
+            for f in ds:
+                if f:
+                    _doi_ten(f, "[LOI]")
             (cfg.vao / f"[LOI] {dt.date.today():%Y%m%d} - doc-vi-sao-hong.txt").write_text(
                 f"{dt.datetime.now():%d/%m/%Y %H:%M}\n\n{loi}\n\n"
                 "Sửa xong thì bỏ chữ [LOI] khỏi tên file, tool sẽ chạy lại ở lần kế tiếp.\n\n"
@@ -283,14 +596,14 @@ def quet_thu_muc(cfg: caidat.CauHinh) -> int:
                 encoding="utf-8",
             )
             continue
-        for f in (duong_th, duong_tn) + ((sms_ky,) if sms_ky else ()):
+        for f in dung:
             _doi_ten(f, "[DONE]")
         xong += 1
     return xong
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="Sinh báo cáo công nợ tuần từ 2 file Misa")
+    p = argparse.ArgumentParser(description="Sinh báo cáo công nợ tuần (full credit report) từ file Misa + SMS")
     p.add_argument("--tong-hop"); p.add_argument("--tuoi-no"); p.add_argument("--ra")
     p.add_argument("--so-ghi"); p.add_argument("--mau-chuan")
     p.add_argument("--nap-bao-cao"); p.add_argument("--ngay-chot")
@@ -301,13 +614,15 @@ def main(argv=None) -> int:
     p.add_argument("--khong-tao-thu-muc-con", action="store_true",
                    help="dùng thẳng thư mục đã trỏ, không tạo Cong-No-Workspace bên trong")
     p.add_argument("--xem-cau-hinh", action="store_true")
+    p.add_argument("--chi-tiet", help="file Chi tiết công nợ phải thu từ 2022 (chạy tay, v0.4)")
+    p.add_argument("--phai-tra", help="file Tổng hợp công nợ phải trả (chạy tay, v0.4)")
     p.add_argument("--sms", help="file SMS AR-AP (chạy tay)")
+    p.add_argument("--ban-hang", help="file Misa Bán hàng (chạy tay, v0.5)")
+    p.add_argument("--so-chi-tiet", help="file Misa Sổ chi tiết tài khoản 131 (chạy tay, v0.5)")
     p.add_argument("--ghep", help="file ghép khách SMS ↔ Misa (chạy tay)")
     p.add_argument("--kiem-tra-ghep-khach", action="store_true",
                    help="đối chiếu file ghép khách với Misa/SMS mới nhất, mở file kiểm tra")
     p.add_argument("--khong-mo-file", action="store_true", help=argparse.SUPPRESS)
-    p.add_argument("--mo-ket-qua", action="store_true",
-                   help="chạy xong thì mở thư mục gốc chứa báo cáo (nút 3_Chay_ngay.bat)")
     a = p.parse_args(argv)
 
     if a.dat_thu_muc:
@@ -413,9 +728,25 @@ def main(argv=None) -> int:
         so.ghi()
         return 0
 
+    if a.tong_hop and a.chi_tiet:
+        if not a.ra:
+            p.error("chạy tay cần --ra <thư mục ra>")
+        try:
+            chay_full(Path(a.tong_hop), Path(a.chi_tiet), Path(a.ra), duong_so_ghi, mau_chuan,
+                      duong_phai_tra=Path(a.phai_tra) if a.phai_tra else None,
+                      duong_sms=Path(a.sms) if a.sms else None,
+                      duong_ghep=Path(a.ghep) if a.ghep else None,
+                      thu_muc_ghep=cfg.ghep if cfg else None,
+                      duong_ban_hang=Path(a.ban_hang) if a.ban_hang else None,
+                      duong_so_ct=Path(a.so_chi_tiet) if a.so_chi_tiet else None)
+        except LoiDocFile as loi:
+            ghi_log(f"LỖI: {loi}")
+            return 2
+        return 0
+
     if a.tong_hop or a.tuoi_no:
         if not (a.tong_hop and a.tuoi_no and a.ra):
-            p.error("chạy tay cần đủ --tong-hop, --tuoi-no và --ra")
+            p.error("chạy tay cần đủ --tong-hop, --chi-tiet (hoặc --tuoi-no) và --ra")
         try:
             chay_mot_lan(Path(a.tong_hop), Path(a.tuoi_no), Path(a.ra), duong_so_ghi, mau_chuan,
                          duong_sms=Path(a.sms) if a.sms else None,
@@ -426,19 +757,14 @@ def main(argv=None) -> int:
             return 2
         return 0
 
+    sua_lich_chay_an()
     try:
         xong = quet_thu_muc(cfg)
     except Exception as loi:      # chạy nền: không bao giờ chết im lặng
         ghi_log(f"LỖI khi quét thư mục: {loi}\n{traceback.format_exc()}")
         return 1
-    if a.mo_ket_qua:
-        if not xong:
-            _in("Không có báo cáo mới. Kiểm tra thư mục input đã đủ 3 file (2 Misa + 1 SMS) chưa.")
-        if os.name == "nt":
-            try:
-                os.startfile(str(cfg.ra))
-            except OSError:
-                pass
+    if not xong:
+        _in("Không có báo cáo mới. Kiểm tra thư mục input đã đủ 4 file chưa (xem _tool/runner.log).")
     return 0
 
 
