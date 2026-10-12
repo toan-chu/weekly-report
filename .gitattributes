@@ -1,0 +1,7 @@
+# Mọi file chữ lưu trong git bằng một kiểu xuống dòng (LF); Windows tự đổi khi lấy về.
+# Hết cảnh đổi máy là hiện hàng loạt file "đã sửa" dù nội dung không đổi (12/10/2026).
+* text=auto
+*.bat text eol=crlf
+*.xlsx binary
+*.png binary
+*.woff2 binary
