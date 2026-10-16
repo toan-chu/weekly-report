@@ -5,7 +5,7 @@
 **Tự dựng báo cáo phải thu, phải trả và dòng tiền hằng tuần cho TRUSTANA Việt Nam**
 
 [![Trustana](https://img.shields.io/badge/TRUSTANA-4d148c?style=for-the-badge&logoColor=white)](#)
-[![Phiên bản](https://img.shields.io/badge/phiên%20bản-0.5-ff6200?style=for-the-badge)](#)
+[![Phiên bản](https://img.shields.io/badge/phiên%20bản-0.6-ff6200?style=for-the-badge)](#)
 [![Phép thử](https://img.shields.io/badge/phép%20thử-89-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-4d148c?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#)
@@ -28,6 +28,8 @@
 | 👩‍💼 **FIN** | Xuất 5 file Misa + 1 file AR-AP từ SMS, **cùng lúc**, thả vào `input` | ~10 phút/tuần | ❌ Không |
 | 👩‍💼 **FIN** | Xem cột **Đối chiếu** + tab Review, sửa chỗ ĐỎ / CAM trên Misa | tuỳ tuần | ❌ Không |
 | 👩‍💼 **FIN** | Điền file ghép khách + bảng job nợ cũ một lần, bấm `2_Kiem_tra_ghep_khach.bat` | ~30 phút, 1 lần | ❌ Không |
+| 👩‍💼 **FIN** | Giữ file **Client Master** (credit term + hợp đồng): điền Mã kh, xác nhận term — FIN là người sửa cuối | ~5 phút/tuần | ❌ Không |
+| 🧑‍💼 **Sales** | Điền khách mới, hợp đồng, ngày hết hạn, gia hạn vào Client Master (file chung OneDrive) | khi có khách / hợp đồng mới | ❌ Không |
 | 👩‍💼 **Kế toán trưởng** | Đọc báo cáo, sửa lý do trễ hạn ngay trên file | tuỳ | ❌ Không |
 | 🧑‍🔧 **Người cài đặt** | Nháy đúp `1_Khoi_tao_workspace.bat`, một lần duy nhất | ~5 phút | ❌ Không |
 | 🤖 **Tool** | Đọc file, tính tuổi nợ từ hoá đơn, phân nhóm rủi ro, ghi báo cáo | ~10 giây | — |
@@ -46,8 +48,9 @@
   Misa  Bán hàng (từ đầu năm)         │  input    Salesman của job ← SMS
   Misa  Sổ chi tiết TK131 (đầu năm)   │        5️⃣ đối chiếu: tổng job vs dư nợ → tô màu cho FIN
   SMS   AR-AP                        ─┘        6️⃣ nhóm rủi ro ← luật của kế toán trưởng
-                                               7️⃣ phải trả (số tổng), dòng tiền, so với tuần trước
-  🔗 sample/: ghép khách + job nợ cũ (1 lần)
+                                               7️⃣ cảnh báo hợp đồng / credit term ← Client Master
+                                               8️⃣ phải trả (số tổng), dòng tiền, so với tuần trước
+  🔗 sample/: ghép khách + job nợ cũ (1 lần) + Client Master (credit term, hợp đồng — Sales/FIN điền)
   📊 gốc/: báo cáo các tuần trước ───────────►    (đọc lại bản kế toán đã sửa)
                                                           │
                                                           ▼
@@ -137,17 +140,75 @@ Tuổi nợ   = hạn của từng hoá đơn (ngày hoá đơn + credit term), 
 Tiền thu  = phiếu thu ghi số hoá đơn thì trừ đúng hoá đơn đó; còn lại trừ hoá đơn cũ nhất trước
 Khó đòi   = luôn ở nhóm 120+
 Tiền      = luôn theo file Tổng hợp; file Chi tiết lệch thì ghi ở Review
-Job       = mỗi hoá đơn KHÔNG ghi "Đã thanh toán" trên Bán hàng; tiền = tiền hoá đơn, hoá đơn nhiều job
-            tách theo dòng hàng của từng job trên Sổ chi tiết. "Đã thanh toán" mà phiếu thu nằm sau
-            ngày cuối kỳ thì vẫn tính là nợ của kỳ.
+Job       = mỗi hoá đơn còn nợ theo sổ; tiền = số CÒN NỢ của hoá đơn (đã trừ phiếu thu), hoá đơn nhiều
+            job chia theo dòng hàng trên Sổ chi tiết. Các dòng job luôn cộng bằng Total.
+Nhóm rủi ro = công thức của chị KTT: N3 khi có 2 dấu hiệu trong S1, S2, S3, S7 hoặc có nợ trên 120 ngày
+Lỡ hẹn (S7) = lý do có ngày hẹn ('15/9', 'tháng 9' = cuối tháng 9) đã qua mà quá hạn không giảm
 ```
+
+### 📝 Điền credit term — file Client Master
+
+File `SAMPLE_credit_term_khach.xlsx` (sheet **Client Master**) là danh sách khách hàng gốc: một khách
+một dòng. Sales và FIN mở chung trên OneDrive, sửa trực tiếp. Tool đọc file này mỗi lần chạy để tính
+hạn từng hoá đơn và báo hợp đồng sắp hết hạn.
+
+**Ai điền cột nào**
+
+| Cột | Ai điền | Ghi chú |
+|---|---|---|
+| Mã kh | **FIN** | Mã khách **đúng như trên Misa** (VD `KH00418`, `INTERFREIGHT`). Sai mã là tool không nhận |
+| Khách hàng, Sales phụ trách, PIC, Mã số thuế | Sales | Sales ghi tên đầy đủ như trên SMS; nhiều Sales thì cách nhau dấu phẩy |
+| Tài khoản ngân hàng (4 cột) | Sales / FIN | Không bắt buộc |
+| Số hợp đồng, Loại hợp đồng | Sales | Chọn trong danh sách hoặc gõ |
+| **Thời hạn** | Sales điền, **FIN xác nhận** | Cột tool dùng để tính quá hạn — cách ghi ở bảng dưới |
+| Ngày hiệu lực, Ngày hết hạn | Sales | Gõ ngày dạng `dd/mm/yyyy` |
+| Ngày gia hạn | Sales | Khi ký gia hạn; file tự cộng 12 tháng ra hạn mới |
+| Cột nền xám | — | Tự tính (STT, hạn đang áp dụng, còn lại bao nhiêu ngày, trạng thái). **Đừng gõ đè** |
+
+**Cách ghi cột Thời hạn** — tool đọc được các kiểu sau:
+
+| Ghi | Tool hiểu là |
+|---|---|
+| `thanh toán ngay` · `trả trước` · `COD` | Đến hạn ngay ngày hoá đơn |
+| `30 days` · `30 ngày` · `Net 30` | 30 ngày sau ngày hoá đơn |
+| `14 ngày của tháng tiếp theo` | Ngày 14 của tháng sau tháng hoá đơn |
+| `15 ngày kể từ ngày gửi bảng công nợ` | 15 ngày sau **ngày hoá đơn** (tool không biết ngày gửi bảng công nợ) |
+| để trống | Tạm tính 30 ngày, và báo "Chưa có credit term" trong sheet Contracts |
+
+**Màu trong file**
+
+| Màu | Nghĩa là |
+|---|---|
+| 🟨 Ô vàng ở Mã kh / Thời hạn | Khách đã có tên nhưng còn thiếu — cần điền |
+| 🟥 Mã kh nền đỏ | Mã bị trùng ở hai dòng — giữ một dòng |
+| 🟥 Trạng thái "Đã hết hạn" | Hợp đồng hết hạn — Sales làm gia hạn |
+| 🟨 Trạng thái "Sắp hết hạn ≤30 ngày" | Hết hạn trong 30 ngày tới |
+
+**Việc thường gặp**
+
+- *Có khách mới:* Sales thêm một dòng ở cuối bảng (công thức đã kéo sẵn tới dòng 400). FIN điền Mã kh khi
+  khách đã có trên Misa.
+- *Ký gia hạn hợp đồng:* Sales điền **Ngày gia hạn**. Không sửa Ngày hết hạn cũ.
+- *Đổi thời hạn thanh toán:* sửa cột Thời hạn. Tuần sau sheet Contracts báo "Credit term vừa đổi" để FIN
+  soát lại với hợp đồng.
+- *Hợp đồng hết hạn chưa gia hạn:* tool **vẫn tính theo thời hạn cũ**, chỉ cảnh báo.
+
+**Không được:** đổi chữ ở dòng tiêu đề (dòng 6), nhất là hai cột **Mã kh** và **Thời hạn**. Chèn thêm cột
+thì được. Sheet **Hướng dẫn** trong file có bản tóm tắt này và danh sách Sales để chọn.
+
+**Mỗi tuần FIN xem sheet Contracts** trong báo cáo: hợp đồng hết hạn mà khách còn nợ (đỏ), sắp hết hạn,
+khách đang nợ chưa có term, term vừa đổi. Sửa ở Client Master → tuần sau hết cảnh báo.
+
+> Lệnh `python runner.py --credit-term "<tên khách>" --gia-tri "15 days"` vẫn chạy, nhưng file Client
+> Master luôn thắng. Nên sửa ở file để mọi người cùng thấy.
 
 ### 📊 Dashboard
 
 Thư mục gốc workspace luôn có `Credit_Dashboard.html`. Mở bằng Chrome hoặc Edge, kéo file báo cáo
 tuần vào trang. Mỗi tab là một trang riêng: Tổng quan · Khách hàng · Sales · Nợ xấu · Phải trả ·
 Dòng tiền. Bấm một khách hoặc một Sales để vào trang chi tiết; các tab khác lọc theo luôn, bỏ lọc
-bằng dấu ✕ trên thanh lọc, nút Back của trình duyệt quay lại được. **In / Lưu PDF** in đủ mọi trang
+bằng dấu ✕ trên thanh lọc, nút Back của trình duyệt quay lại được. Trang Tổng quan có ô **Hợp đồng &
+credit term** (cảnh báo từ sheet Contracts). **In / Lưu PDF** in đủ mọi trang
 để gửi sếp (chọn "Save as PDF").
 Không cần mạng, dữ liệu không rời khỏi máy.
 
@@ -199,6 +260,16 @@ thư mục gốc. Bảng job nợ cũ không nằm trong git vì chứa số li�
 `2_Kiem_tra_ghep_khach.bat` là tool tự tạo.
 Từ tuần 41: chỉ thả 6 file mới vào `input/`.
 
+### 🔄 Cập nhật bản mới trên máy FIN (không dùng git)
+
+1. Người bảo trì đẩy code lên GitHub (GitHub Desktop: **Commit** → **Push origin**).
+2. Trên máy FIN: GitHub → **Code → Download ZIP** → giải nén → chép **đè** lên thư mục code cũ.
+   Cấu hình riêng của máy (`settings.json`) không nằm trong ZIP nên giữ nguyên; không cần cài lại.
+3. **Không xoá workspace.** Thư mục `_tool` giữ trí nhớ các tuần trước; báo cáo cũ ở thư mục gốc là mốc so
+   sánh. File Excel không đi theo git: file mẫu nào đổi thì chép tay vào `sample/` (người bảo trì báo).
+4. Muốn chạy lại một tuần bằng bản mới: vào `input/`, bỏ chữ `[DONE] ` ở 6 file của tuần đó → Task
+   Scheduler → **Run**. Tool tạo file `… (chay lai …).xlsx`, không đè báo cáo FIN đã sửa.
+
 ### 🏷️ Khai những thứ file Misa không có — khai một lần, tool nhớ mãi
 
 ```bat
@@ -224,6 +295,9 @@ python runner.py --nhan-lai "OPTIMALOG LLC"
 | ⚠️ Review ghi *"Chi tiết 131 và Tổng hợp 131 lệch"* | Hai file xuất khác thời điểm | Xuất lại cả hai cùng lúc |
 | 😴 Không thấy file kết quả | Máy tắt, hoặc lịch chưa gọi | Task Scheduler → *Bao cao cong no tuan* → Run |
 | 🔒 Nhật ký ghi *"Tạm hoãn kỳ này"* | File kết quả đang mở trong Excel | Đóng file, lần chạy sau tool làm tiếp |
+| 📄 Review ghi *"Không thấy file Client Master"* | OneDrive chưa đồng bộ file, hoặc file bị đổi tên/chuyển chỗ | Mở OneDrive cho đồng bộ; `python runner.py --xem-cau-hinh` để xem tool đang tìm ở đâu |
+| 📋 Contracts báo *"Chưa có credit term"* với khách đã điền | Mã kh trong Client Master khác mã trên Misa | Sửa Mã kh cho đúng mã Misa |
+| 👤 Job ghi *"Không thấy job trên SMS"* | Job có trên Misa nhưng không có trong file SMS AR-AP | Tra mã job trên SMS: SMS ghi đã thu (lệch Misa), job nằm dưới tên khách khác (sửa file ghép khách), hoặc job làm ngoài SMS |
 
 📜 Nhật ký: `_tool/runner.log` trong thư mục đích.
 
@@ -234,7 +308,7 @@ python runner.py --nhan-lai "OPTIMALOG LLC"
 ```
 weekly-report/            chỉ chứa mã nguồn, không có dữ liệu chạy
 ├── runner.py             điểm chạy, cũng là chỗ nhận mọi lệnh
-├── wr/                   misa · chitiet · banhang · tindung · ghifull · ghep · soghi · tinhtoan · baocao · kiemtra
+├── wr/                   misa · chitiet · banhang · tindung · ghifull · ghep · khachhang · soghi · tinhtoan · baocao · kiemtra
 ├── tools/                make_template · setup_wizard
 ├── tests/                89 phép thử (20 cần dữ liệu thật trong handoff/docs/fixtures/)
 ├── dashboard/            src + build.py → Credit_Dashboard.html (tool chép vào workspace)
@@ -251,7 +325,16 @@ python dashboard/build.py              :: sửa dashboard/src thì dựng lại 
 
 📐 Kiến trúc: `handoff/MAP.md` · Luật phối hợp: `handoff/RULES.md` — đọc trước khi sửa
 
-### 🆕 Có gì mới ở v0.5 (09/10/2026)
+### 🆕 Có gì mới ở v0.6 (13/10/2026) — WR-08
+
+- **Tiền của từng job = số còn nợ theo sổ** (đã trừ phiếu thu); dòng job luôn cộng bằng Total. W41: 58/66 khách y hệt bản FIN sửa tay.
+- **AR Risk dùng công thức của chị KTT** (S1–S6, nhóm, xu hướng, việc cần làm); TOTAL ở Receivables là công thức.
+- **S7 lỡ hẹn**: lý do có ngày hẹn đã qua mà chưa thu → tính thêm một dấu hiệu (ATH W41 lên N3).
+- **Cột Jobs by Salesman**: khách nhiều Sales thấy job nào của ai (câu hỏi của Customer Experience).
+- **Client Master** (credit term + hợp đồng) dùng chung trên OneDrive; **sheet Contracts** cảnh báo hợp đồng hết hạn còn nợ, sắp hết hạn, chưa có term, term vừa đổi; ô tương ứng trên dashboard.
+- FIN sửa thẳng trên file báo cáo là tool nhận bản đó; bỏ phiếu khách mới; dashboard hiện tên công ty gọn.
+
+### 🆕 v0.5 (09/10/2026)
 
 - **Job lấy từ Misa** (Bán hàng + Sổ chi tiết TK131) thay cho SMS: tiền theo tỷ giá hoá đơn nên khớp sổ; SMS chỉ còn cho tên Sales (WR-06).
 - **Cột Đối chiếu job** tô màu + gợi ý nguyên nhân; Review gom theo màu cho FIN (WR-06).

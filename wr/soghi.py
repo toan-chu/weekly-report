@@ -208,7 +208,7 @@ def so_ngay_term(credit_term: str, mac_dinh: int = 30) -> int:
     t = str(credit_term or "").strip().lower()
     if not t:
         return mac_dinh
-    if "thanh toán ngay" in t or t in {"cod", "prepay", "prepaid"}:
+    if any(x in t for x in ("thanh toán ngay", "trả ngay", "trả trước")) or t in {"cod", "prepay", "prepaid"}:
         return 0
     m = _re.search(r"(\d+)", t)
     return int(m.group(1)) if m else mac_dinh
