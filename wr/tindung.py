@@ -11,7 +11,9 @@ Luật chốt: handoff/20261008_WR-04_full-credit-report.md, handoff/MAP.md.
 """
 from __future__ import annotations
 
+import calendar
 import datetime as dt
+import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
@@ -25,6 +27,7 @@ from .tinhtoan import DongBaoCao, _cac_job, _chenh_ty_gia
 # --- tham số của chị KTT (sheet "Tham chieu") ------------------------------
 SO_DAU_HIEU_NO_XAU = 2
 NGUONG_CEO = 100_000_000
+NGUONG_DU_LE = 1_000              # VND: dư nợ nhỏ hơn thế là số lẻ còn sót, không đưa vào báo cáo
 TU_KHOA_LOAI_TRU = ("cấn trừ", "bù trừ", "thanh toán hộ", "supplier của mình")
 TU_KHOA_PHAP_LY = ("đang kiện", "mất liên lạc", "khó đòi", "công nợ xấu", "phá sản")
 
@@ -58,6 +61,9 @@ class DongRuiRo:
     xu_huong: str = ""
     viec_can_lam: str = ""
     ceo: bool = False
+    chia_sales: str = ""   # WR-08 (CX): khách nhiều Sales — job nào của Sales nào
+    ngay_hen: Optional[dt.date] = None   # ngày Sales hẹn khách trả, đọc từ lý do
+    s7: int = 0                          # S7 lỡ hẹn: đã qua ngày hẹn mà quá hạn không giảm
 
     @property
     def qua_han(self) -> float:
@@ -142,6 +148,47 @@ def _ghep_sms(th: TongHop, dong_sms, bang):
     return theo_khach, [tuple(g) for g in gop.values()], chua
 
 
+# --- S7 lỡ hẹn (Chairman 13/10, chọn phương án A) ------------------------------------------
+_RE_NGAY_THANG = re.compile(r"ngày\s*(\d{1,2})\s*tháng\s*(\d{1,2})(?:\s*(?:năm|/)\s*(\d{4}))?")
+_RE_DMY = re.compile(r"(?<![\d.,/])(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{4}|\d{2}))?(?![.,]?\d)")
+_RE_THANG = re.compile(r"(đầu|giữa|cuối)?\s*(?:tháng|\bt)\s*(\d{1,2})(?:\s*(?:năm|/)\s*(\d{4}))?(?!\d)")
+
+
+def ngay_hen(ly_do: str, ngay_chot: dt.date) -> Optional[dt.date]:
+    """Ngày hẹn trả muộn nhất ghi trong lý do: '15/9', 'ngày 15 tháng 9', 'tháng 9' (= cuối tháng),
+    'đầu tháng 9' (= 10/9), 'giữa tháng 9' (= 20/9), 'T9'. Không ghi năm → năm của ngày chốt,
+    lùi một năm nếu ra ngày xa hơn 6 tháng sau ngày chốt. Không thấy → None."""
+    t = str(ly_do or "").lower()
+    if not t.strip() or t.startswith(th_.NHAN_TU_DONG.lower()):
+        return None
+    ra: List[dt.date] = []
+
+    def them(d, m, y, cuoi=False):
+        try:
+            d, m = int(d), int(m)
+            if not 1 <= m <= 12:
+                return
+            nam = int(y) + (2000 if y and int(y) < 100 else 0) if y else ngay_chot.year
+            if y is None and dt.date(nam, m, 1) > ngay_chot + dt.timedelta(days=183):
+                nam -= 1                         # 'tháng 12' ghi hồi tháng 1 → tháng 12 năm trước
+            elif y is None and dt.date(nam, m, 28) < ngay_chot - dt.timedelta(days=183):
+                nam += 1                         # 'tháng 2' ghi hồi tháng 10 → tháng 2 năm sau
+            ra.append(dt.date(nam, m, calendar.monthrange(nam, m)[1] if cuoi else d))
+        except ValueError:
+            pass
+
+    for m in _RE_NGAY_THANG.finditer(t):
+        them(m.group(1), m.group(2), m.group(3))
+    t = _RE_NGAY_THANG.sub(" ", t)
+    for m in _RE_DMY.finditer(t):
+        them(m.group(1), m.group(2), m.group(3))
+    t = _RE_DMY.sub(" ", t)
+    for m in _RE_THANG.finditer(t):
+        moc = {"đầu": 10, "giữa": 20}.get(m.group(1) or "")
+        them(moc or 1, m.group(2), m.group(3), cuoi=not moc)
+    return max(ra) if ra else None
+
+
 def _xu_huong(r: DongRuiRo) -> str:
     """Câu tự sinh, chép đúng công thức cột 'Trend (Auto)' của chị KTT."""
     s1, s2, s3, s4, s5, s6 = r.s
@@ -155,6 +202,8 @@ def _xu_huong(r: DongRuiRo) -> str:
         c.append("Khách phát sinh lô mới nhưng nợ cũ không giảm.")
     if s2:
         c.append("Quá hạn đứng yên so với tuần trước, chưa thu được đồng nào.")
+    if r.s7 and r.ngay_hen:
+        c.append(f"Đã quá ngày hẹn trả ({r.ngay_hen:%d/%m/%Y}) mà quá hạn chưa giảm.")
     if r.tt_total > 0.5 and 0.5 < q < v - 0.5:
         c.append(f"Đã thu bớt {v - q:,.0f} so với tuần trước.")
     if s3:
@@ -235,6 +284,91 @@ def _dong_con_misa(d: DongBaoCao, hds, term: str, tai_ngay: dt.date, sales_job: 
             d.salesman = sales_cu
 
 
+def _dong_con_theo_so(d: DongBaoCao, job_misa, ma: str, khai_no_cu: list, sales_job: Dict[str, str],
+                      sales_cu: str, tai_ngay: dt.date) -> None:
+    """WR-08 (FIN sửa tay 9 khách ở W41): tiền mỗi dòng job = số CÒN NỢ của hoá đơn theo sổ Chi tiết 131
+    (phiếu thu ghi số HĐ trừ đúng HĐ đó, còn lại trừ HĐ cũ trước) — không lấy nguyên tiền hoá đơn.
+    Job của hoá đơn: Bán hàng + Sổ chi tiết (năm nay), bảng job nợ cũ (năm trước). Cộng các dòng = dư nợ."""
+    theo_hd = {}
+    for h in job_misa.theo_ma.get(ma, []):
+        n = ctm._so_hd(h.so_hd)
+        if n is not None:
+            theo_hd[(n, h.ngay.year)] = h
+    no_cu = {}
+    for so_hd, job, sales in khai_no_cu:
+        no_cu.setdefault(so_hd, (job, sales))
+    for ngay, so_hd, han, tien in sorted(d.hoa_don, key=lambda x: (x[0] or dt.date.max)):
+        if tien <= 0.5:
+            continue
+        nhom = [0.0] * 6
+        i = sg.nhom_tu_so_ngay((tai_ngay - han).days)
+        n = ctm._so_hd(str(so_hd)) if ngay else None
+        h = theo_hd.get((n, ngay.year)) if n is not None else None
+        g0 = {"ngay": ngay, "nguon_ngay": "HĐ", "so_hd": so_hd if ngay else "", "misa": True}
+        if ngay is None:
+            nhom[i] = tien
+            d.dong_con.append({**g0, "job": "Chưa rõ hoá đơn (Tổng hợp 131 cao hơn Chi tiết)", "sales": "",
+                               "tien": tien, "trang_thai": "", "nhom_co_dinh": nhom})
+            continue
+        if h is not None:
+            tong = sum(h.jobs.values()) or 1.0
+            phan = [(j, round(tien * t / tong, 2)) for j, t in h.jobs.items()]
+            lech = round(tien - sum(p for _, p in phan), 2)
+            if lech and phan:
+                phan[-1] = (phan[-1][0], round(phan[-1][1] + lech, 2))
+            tt = h.trang_thai if h.chua_tt else f"Misa ghi '{h.trang_thai}' nhưng sổ còn nợ"
+            for job, p in phan:
+                nh = [0.0] * 6
+                nh[i] = p
+                d.dong_con.append({**g0, "job": job or f"HĐ {so_hd} (chưa có job)",
+                                   "sales": sales_job.get(job.upper(), "") if job else "",
+                                   "tien": p, "trang_thai": tt, "nhom_co_dinh": nh})
+            continue
+        nhom[i] = tien
+        if n is None:                     # số chứng từ không phải số hoá đơn (NVK…): bút toán điều chỉnh
+            d.dong_con.append({**g0, "job": f"Điều chỉnh / chênh lệch tỷ giá ({so_hd})", "sales": "",
+                               "tien": tien, "trang_thai": "Bút toán điều chỉnh trên sổ", "nhom_co_dinh": nhom})
+            continue
+        if ngay < job_misa.tu_ngay:
+            job, sales = no_cu.get(n, ("", ""))
+            d.dong_con.append({**g0, "job": job or f"HĐ {so_hd} (nợ cũ, chưa có job)", "sales": th_.ten_sales(sales),
+                               "tien": tien, "trang_thai": "Nợ cũ – bảng FIN" if job else "Nợ cũ – FIN điền job",
+                               "tham_chieu": bool(job), "nhom_co_dinh": nhom})
+        else:
+            d.dong_con.append({**g0, "job": f"HĐ {so_hd} (không thấy trên Bán hàng)", "sales": "",
+                               "tien": tien, "trang_thai": "", "nhom_co_dinh": nhom})
+    if d.dong_con:
+        d.job = ", ".join(_cac_job(", ".join(g["job"] for g in d.dong_con if not g["job"].startswith(("HĐ ", "Chưa rõ", "Điều chỉnh")))))
+        tien_sale: Dict[str, float] = {}
+        for g in d.dong_con:
+            if g["sales"]:
+                tien_sale[g["sales"]] = tien_sale.get(g["sales"], 0) + g["tien"]
+        if tien_sale:
+            d.salesman = ", ".join(sorted(tien_sale, key=lambda t: -tien_sale[t]))
+        elif sales_cu:
+            d.salesman = sales_cu
+
+
+def _tr(v: float) -> str:
+    return f"{v / 1e9:,.2f} tỷ".replace(".00 tỷ", " tỷ") if abs(v) >= 1e9 else f"{v / 1e6:,.0f}tr" if abs(v) >= 1e6 \
+        else f"{v:,.0f}"
+
+
+def chia_theo_sales(dong_con: List[dict]) -> str:
+    """CX 12/10: khách có từ 2 Sales trở lên thì ghi rõ job nào của Sales nào, để sếp đọc hiểu.
+    'Trần Văn Hiếu (45tr): EXSANA…, EXHANA… | Lê Thị Hằng (12tr): TRAANA…'. Một Sales thì để trống."""
+    nhom: Dict[str, list] = {}
+    for g in dong_con:
+        x = nhom.setdefault(g.get("sales") or "Không thấy job trên SMS", [0.0, []])
+        x[0] += g["tien"]
+        if g["job"] not in x[1]:
+            x[1].append(g["job"])
+    co_ten = [s for s in nhom if s != "Không thấy job trên SMS"]
+    if len(co_ten) < 2:
+        return ""
+    return " | ".join(f"{s} ({_tr(v)}): {', '.join(j)}" for s, (v, j) in sorted(nhom.items(), key=lambda x: -x[1][0]))
+
+
 def doi_chieu(T: float, dong_con: List[dict]) -> dict:
     """FIN 09/10: cộng các job chưa thanh toán, so với dư nợ của khách; lệch thì báo màu để FIN
     xem lại (quên đánh giá chênh lệch tỷ giá, thanh toán một phần mà Misa không tự trừ...)."""
@@ -244,23 +378,23 @@ def doi_chieu(T: float, dong_con: List[dict]) -> dict:
     if abs(L) <= DUNG_SAI_KHOP:
         mau, goi_y = "khop", ""
     elif not dong_con:
-        mau, goi_y = "cam", ("Không có hoá đơn chưa thanh toán nào trên file Bán hàng: nợ trước năm nay "
-                             "(điền bảng job nợ cũ) hoặc tên khách hai file khác nhau.")
+        mau, goi_y = "cam", ("Misa không ghi hoá đơn nào chưa thanh toán: nợ trước năm nay hoặc Misa ghi "
+                             "'Đã thanh toán' mà sổ còn nợ. Dòng job đã tính theo sổ.")
     elif abs(L) <= TY_LE_LECH_NHO * max(T, S):
         mau, goi_y = "vang", "Lệch nhỏ: nghi quên đánh giá chênh lệch tỷ giá, hoặc làm tròn."
     elif L < 0:
         mau = "do"
-        goi_y = ("Tổng job chưa thanh toán LỚN hơn dư nợ: đã thu nhưng chưa đối trừ vào hoá đơn, "
-                 "hoặc thanh toán một phần mà Misa chưa tự trừ.")
+        goi_y = ("Misa ghi chưa thanh toán NHIỀU hơn dư nợ: đã thu nhưng chưa đối trừ vào hoá đơn, "
+                 "hoặc thanh toán một phần Misa chưa tự trừ → đối trừ trên Misa. Dòng job đã tính theo sổ.")
         if mot_phan:
             goi_y += f" Có {mot_phan} dòng 'Thanh toán một phần'."
     else:
-        mau, goi_y = "cam", ("Dư nợ LỚN hơn tổng job chưa thanh toán: có nợ chưa gắn job (nợ trước năm "
-                             "nay → điền bảng job nợ cũ) hoặc hoá đơn chưa lên file Bán hàng.")
+        mau, goi_y = "cam", ("Dư nợ LỚN hơn số Misa ghi chưa thanh toán: nợ trước năm nay, hoặc hoá đơn Misa "
+                             "ghi 'Đã thanh toán' mà sổ còn nợ. Dòng job đã tính theo sổ.")
     return {"mau": mau, "lech": L, "tong_job": S, "goi_y": goi_y}
 
 
-def danh_gia_rui_ro(r: DongRuiRo) -> DongRuiRo:
+def danh_gia_rui_ro(r: DongRuiRo, ngay_chot: Optional[dt.date] = None) -> DongRuiRo:
     J, Q = r.cuoi_ky, r.qua_han
     U, V, W = r.tt_total, r.tt_qua_han, r.tt_61
     nop = sum(r.nhom[3:])
@@ -272,8 +406,10 @@ def danh_gia_rui_ro(r: DongRuiRo) -> DongRuiRo:
         int(not r.credit_term.strip()),                           # S5 chưa có term
         int(J > 0.5 and abs(Q - J) < 1),                          # S6 toàn bộ đã quá hạn
     ]
-    r.so_dau_hieu = sum(r.s[:3])
-    r.ma_dau_hieu = " ".join(f"S{i + 1}" for i, v in enumerate(r.s) if v)
+    r.ngay_hen = ngay_hen(r.ly_do, ngay_chot) if ngay_chot else None
+    r.s7 = int(bool(r.ngay_hen and r.ngay_hen < ngay_chot and Q > 0.5 and Q >= V - 0.5))
+    r.so_dau_hieu = sum(r.s[:3]) + r.s7
+    r.ma_dau_hieu = " ".join([f"S{i + 1}" for i, v in enumerate(r.s) if v] + (["S7"] if r.s7 else []))
     if Q < 0.5:
         r.nhom_rui_ro = N0
     elif _co(r.ly_do, TU_KHOA_LOAI_TRU):
@@ -300,7 +436,8 @@ def danh_gia_rui_ro(r: DongRuiRo) -> DongRuiRo:
 
 def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=None,
               pt: Optional[PhaiTra] = None, ngay_chot: Optional[dt.date] = None,
-              job_no_cu: Optional[Dict[str, list]] = None, job_misa=None) -> KetQuaFull:
+              job_no_cu: Optional[Dict[str, list]] = None, job_misa=None,
+              credit_terms: Optional[Dict[str, str]] = None) -> KetQuaFull:
     # Ngày chốt (tên trang sổ ghi, "At dd Mon yyyy") = hôm sau ngày cuối kỳ, như file Tuổi nợ cũ.
     # Tuổi nợ tính tại ngày cuối kỳ: hoá đơn đến hạn đúng ngày đó vẫn là "Current".
     ngay_chot = ngay_chot or th.den_ngay + dt.timedelta(days=1)
@@ -329,8 +466,13 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
             kq.da_bo.append((k.ten, k.du_no, so.bo_qua[k.ten_chuan].get("ly_do", "")))
             continue
         T = round(k.du_no, 2)
+        if T < NGUONG_DU_LE:              # WR-08: FIN xoá tay Phan Thuý Ngân 84đ ở W41
+            kq.da_bo.append((k.ten, T, "Dư nợ lẻ dưới 1.000đ — không đưa vào bảng"))
+            continue
         tr = truoc.get(k.ten_chuan) or truoc_theo_ma.get(k.ma.upper())
-        term = (so.dieu_chinh.get(k.ten_chuan, {}).get("credit_term")
+        # WR-08: bảng credit term FIN giữ ở sample/ thắng; rồi tới lệnh khai tay; rồi báo cáo tuần trước
+        term = ((credit_terms or {}).get(k.ma.upper())
+                or so.dieu_chinh.get(k.ten_chuan, {}).get("credit_term")
                 or (tr.credit_term if tr else "") or "")
         term_ngay = sg.so_ngay_term(term)
         d = DongBaoCao(ma=k.ma, ten=k.ten, ten_chuan=k.ten_chuan, credit_term=term, total=T,
@@ -387,8 +529,12 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
         ds = theo_khach.get(k.ma, [])
         if job_misa is not None:
             # v0.5 (WR-06): job + tiền lấy từ Misa (Bán hàng + Sổ chi tiết), SMS chỉ cho tên sales
-            _dong_con_misa(d, job_misa.chua_tt_cua(k.ma, tai_ngay), term, tai_ngay, sales_job,
-                           tr.salesman if tr else "")
+            misa_chua = job_misa.chua_tt_cua(k.ma, tai_ngay)
+            if d.hoa_don:
+                _dong_con_theo_so(d, job_misa, k.ma, (job_no_cu or {}).get(k.ma.upper(), []), sales_job,
+                                  tr.salesman if tr else "", tai_ngay)
+            else:                             # khó đòi / ngoại lệ: không có hoá đơn theo sổ
+                _dong_con_misa(d, misa_chua, term, tai_ngay, sales_job, tr.salesman if tr else "")
             for h in job_misa.theo_ma.get(k.ma, []):
                 n = ctm._so_hd(h.so_hd)
                 if n is not None:
@@ -426,7 +572,7 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
         con_lai = round(T - sum(g["tien"] for g in d.dong_con), 2)
         if job_misa is not None:
             con_lai = float("inf")            # nợ cũ trước năm nay: FIN khai theo hoá đơn, không giới hạn
-        if job_no_cu and con_lai >= 1 and d.hoa_don:
+        if job_no_cu and con_lai >= 1 and d.hoa_don and job_misa is None:
             mo = {}
             for ngay, so_hd, han, tien in d.hoa_don:
                 if job_misa is not None and (ngay is None or ngay >= job_misa.tu_ngay):
@@ -449,7 +595,8 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
                 if not d.salesman:
                     d.salesman = ", ".join(dict.fromkeys(g["sales"] for g in d.dong_con if g["sales"]))
         if job_misa is not None:
-            d.doi_chieu = doi_chieu(T, d.dong_con)
+            # đối chiếu: số Misa GHI chưa thanh toán so với dư nợ — chỉ để FIN dọn Misa; dòng job đã theo sổ
+            d.doi_chieu = doi_chieu(T, [{"tien": h.tien, "trang_thai": h.trang_thai} for h in misa_chua])
             du_ct = kct.so_du(tai_ngay) if kct else None
             if (d.doi_chieu["mau"] != "khop" and du_ct is not None and abs(du_ct - T) > DUNG_SAI_KHOP
                     and abs(du_ct - d.doi_chieu["tong_job"]) <= DUNG_SAI_KHOP):
@@ -481,7 +628,8 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
             tt_61=round(sum(tr.nhom[3:]), 2) if tr else 0.0, co_tuan_truoc=tr is not None,
             nhap_bo_sung=round(k.dau_ky - tr.tong, 2) if tr else None,
         )
-        kq.rui_ro.append(danh_gia_rui_ro(r))
+        r.chia_sales = chia_theo_sales(d.dong_con)
+        kq.rui_ro.append(danh_gia_rui_ro(r, ngay_chot))
         if not d.ly_do.strip():
             d.ly_do_tu_dong = f"{th_.NHAN_TU_DONG} {r.xu_huong}".strip()
 

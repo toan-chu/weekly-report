@@ -92,6 +92,16 @@ def main() -> int:
     print(f"Đã ghi cấu hình riêng của máy này: {caidat.TEP_CAU_HINH.name}")
     ws = cfg.workspace
 
+    # WR-08: file Client Master chung (credit term + hợp đồng) — Sales và FIN cùng điền trên OneDrive
+    print("\nFile Client Master (credit term + hợp đồng khách hàng) dùng chung trên OneDrive:")
+    print("  - Nếu file nằm sẵn trong thư mục sample/ của workspace: bấm Enter.")
+    print("  - Nếu file nằm chỗ khác trên OneDrive: mở thư mục chứa file, giữ Shift + chuột phải vào file,")
+    print('    chọn "Copy as path", rồi dán vào đây.')
+    cm = input("Đường dẫn file Client Master (Enter = dùng sample/): ").strip()
+    if cm:
+        p = caidat.dat_client_master(cm)
+        print(f"  Đã ghi: {p}" + ("" if p.is_file() else "  ← CHƯA THẤY FILE: kiểm tra OneDrive đã đồng bộ chưa"))
+
     if os.name == "nt":
         khoi_dong = tao_file_khoi_dong()      # vẫn giữ để chạy tay bằng nháy đúp
         ket_qua = subprocess.run(

@@ -22,6 +22,7 @@ SHEET_PAYABLE = "Payable"
 SHEET_CASH = "Cash Flow"
 SHEET_METHOD = "Methodology"
 SHEET_INVOICES = "Invoices"
+SHEET_CONTRACT = "Contracts"   # WR-08: cảnh báo hợp đồng / credit term (Client Master)
 TEN_BAO_CAO_TRA = "Creditors Report"
 TEN_BANG_TRA = "Accounts payable"
 

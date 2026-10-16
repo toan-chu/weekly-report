@@ -97,6 +97,8 @@
     // Summary: cột F là khoá máy đọc
     const S = rows(wb, "Summary");
     d.period = String(S[2]?.[0] || "");
+    { const m = d.period.match(/At\s+(\d{1,2})\s+(\w{3})\s+(\d{4})/), M = "JanFebMarAprMayJunJulAugSepOctNovDec";
+      ASOF = m ? new Date(+m[3], M.indexOf(m[2]) / 3, +m[1]) : new Date(); }
     d.now = {}; d.last = {};
     S.forEach((r) => { if (r && typeof r[5] === "string" && /^[a-z_0-9]+$/.test(r[5])) { d.now[r[5]] = r[2]; d.last[r[5]] = r[1]; } });
     const hi = findRow(S, (r) => r[0] === "Week" && r[1] === "Period end");
@@ -137,13 +139,29 @@
     for (let i = ki + 1; i < K.length; i++) {
       const r = K[i]; if (!r || !r[1] || typeof r[0] !== "number") continue;
       const c = byCode[String(r[1]).trim().toUpperCase()]; if (!c) continue;
-      c.s = ["S1", "S2", "S3", "S4", "S5", "S6"].map((k) => n0(r[col(k)]));
-      c.tierFile = r[col("Risk Tier")] || ""; c.trend = r[col("Trend (auto)")] || "";
-      c.action = r[col("Required action")] || ""; c.ceoFile = r[col("CEO review")] === "Yes";
+      // WR-08: S1–S6, nhóm, xu hướng, việc cần làm trong file là CÔNG THỨC (có thể chưa có giá trị nếu file
+      // chưa mở bằng Excel) → dashboard tự tính lại từ các cột số, cùng luật Head of FIN
       c.lwTotal = n0(r[col("Last week total")]); c.lwOver = n0(r[col("Last week overdue")]);
+      c.lw61 = n0(r[col("Last week 61+")]); c.bySales = String(r[col("Jobs by Salesman")] ?? "");
+      const pd = r[col("Promise date")];
+      c.pdFile = typeof pd === "number" ? new Date(Math.round((pd - 25569) * 864e5)) : pd instanceof Date ? pd : null;
       c.opening = n0(r[col("Opening (Misa)")]); c.inc = n0(r[col("Increase")]); c.dec = n0(r[col("Decrease")]);
     }
     d.cust.forEach(tierOf);
+    // WR-08: sheet Contracts — cảnh báo hợp đồng / credit term (đọc từ Client Master)
+    d.contracts = [];
+    if (wb.Sheets["Contracts"]) {
+      const H = rows(wb, "Contracts"), hi = findRow(H, (r) => r.includes("Alert"));
+      if (hi >= 0) for (let i = hi + 1; i < H.length; i++) {
+        const r = H[i]; if (!r || typeof r[0] !== "number") continue;
+        const han = typeof r[8] === "number" ? ngayVN(new Date(Math.round((r[8] - 25569) * 864e5))) : String(r[8] ?? "");
+        const a = { loai: String(r[1] || ""), code: String(r[2] ?? "").trim(), name: String(r[3] || ""), sales: String(r[4] || ""),
+                    balance: n0(r[5]), hd: String(r[6] || ""), term: String(r[7] || ""), han, left: r[9], note: String(r[10] || "") };
+        a.muc = a.loai.startsWith("Hợp đồng đã hết hạn") ? "do" : /≤30|Chưa có credit|vừa đổi/.test(a.loai) ? "vang" : "";
+        d.contracts.push(a);
+        const c = byCode[a.code.toUpperCase()]; if (c) (c.alerts = c.alerts || []).push(a);
+      }
+    }
     // Invoices
     if (wb.Sheets["Invoices"]) {
       const V = rows(wb, "Invoices");
@@ -183,10 +201,63 @@
     return d;
   }
 
+  // S7 lỡ hẹn (Chairman 13/10): ngày hẹn trả muộn nhất ghi trong lý do — cùng luật với tindung.ngay_hen
+  let ASOF = new Date();
+  function ngayHen(text) {
+    let t = String(text || "").toLowerCase(); const ra = [];
+    if (!t.trim() || t.startsWith(AUTO.toLowerCase())) return null;
+    const them = (d, m, y, cuoi) => {
+      d = +d; m = +m; if (m < 1 || m > 12) return;
+      let nam = y ? +y + (+y < 100 ? 2000 : 0) : ASOF.getFullYear();
+      if (!y && new Date(nam, m - 1, 1) - ASOF > 183 * 864e5) nam--;
+      else if (!y && ASOF - new Date(nam, m - 1, 28) > 183 * 864e5) nam++;
+      const x = new Date(nam, m - 1, cuoi ? new Date(nam, m, 0).getDate() : d);
+      if (x.getMonth() === m - 1) ra.push(x);
+    };
+    const R1 = /ngày\s*(\d{1,2})\s*tháng\s*(\d{1,2})(?:\s*(?:năm|\/)\s*(\d{4}))?/g;
+    const R2 = /(?<![\d.,\/])(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{4}|\d{2}))?(?![.,]?\d)/g;
+    const R3 = /(đầu|giữa|cuối)?\s*(?:tháng|(?<![\p{L}\d])t)\s*(\d{1,2})(?:\s*(?:năm|\/)\s*(\d{4}))?(?!\d)/gu;
+    for (const m of t.matchAll(R1)) them(m[1], m[2], m[3]);
+    t = t.replace(R1, " ");
+    for (const m of t.matchAll(R2)) them(m[1], m[2], m[3]);
+    t = t.replace(R2, " ");
+    for (const m of t.matchAll(R3)) { const moc = { "đầu": 10, "giữa": 20 }[m[1] || ""]; them(moc || 1, m[2], m[3], !moc); }
+    return ra.length ? new Date(Math.max(...ra)) : null;
+  }
+  const ngayVN = (d) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+
+  // Công thức S1–S7 của Head of FIN (sheet AR Risk / Methodology)
+  function signals(c, reason) {
+    const J = c.total, Q = c.overdue, U = c.lwTotal || 0, V = c.lwOver || 0, W = c.lw61 || 0;
+    return [
+      +(U > 0 && J - U > 0.5 && Q - V >= -0.5), +(Q > 0.5 && Math.abs(Q - V) < 1),
+      +(c.b[3] + c.b[4] + c.b[5] - W > 0.5), +(!reason.trim()), +(!String(c.term || "").trim()),
+      +(J > 0.5 && Math.abs(Q - J) < 1),
+      +(!!c.hen && c.hen < ASOF && Q > 0.5 && Q - V >= -0.5),
+    ];
+  }
+  function trendOf(c) {
+    const s = c.s, Q = c.overdue, U = c.lwTotal || 0, V = c.lwOver || 0, t = [];
+    if (Q < 0.5) t.push("Chưa đến hạn thanh toán.");
+    if (U < 0.5) t.push("Khách mới xuất hiện trong bảng tuần này.");
+    if (s[0]) t.push("Khách phát sinh lô mới nhưng nợ cũ không giảm.");
+    if (s[1]) t.push("Quá hạn đứng yên so với tuần trước, chưa thu được đồng nào.");
+    if (s[6]) t.push(`Đã quá ngày hẹn trả (${ngayVN(c.hen)}) mà quá hạn chưa giảm.`);
+    if (U > 0.5 && Q > 0.5 && Q < V - 0.5) t.push(`Đã thu bớt ${fmt.format(Math.round(V - Q))} so với tuần trước.`);
+    if (s[2]) t.push("Nợ đang già đi, tiền chuyển sang nhóm tuổi cao hơn.");
+    if (s[5]) t.push("Toàn bộ dư nợ đã quá hạn.");
+    if (c.b[5] > 0.5) t.push(`Có ${fmt.format(Math.round(c.b[5]))} nằm ở nhóm trên 120 ngày.`);
+    if (s[4]) t.push("Chưa có điều khoản thanh toán nên chưa xác định chắc chắn được quá hạn.");
+    if (s[3]) t.push("CHƯA CÓ GIẢI TRÌNH TỪ SALES.");
+    return t.join(" ");
+  }
+
   function tierOf(c) {
     const reason = c.reason.startsWith(AUTO) ? "" : c.reason;
     const low = reason.toLowerCase();
-    const sig = c.s ? c.s[0] + c.s[1] + c.s[2] : 0;
+    c.hen = ngayHen(reason) || c.pdFile || null;
+    c.s = signals(c, reason);
+    const sig = c.s[0] + c.s[1] + c.s[2] + c.s[6];
     let t;
     if (c.overdue < 0.5) t = "0·Chưa đến hạn";
     else if (KW_X.some((k) => low.includes(k))) t = "X·Không phải rủi ro tín dụng";
@@ -196,6 +267,10 @@
     else t = "N1·Quá hạn bình thường";
     c.tier = t; c.tierKey = t.split("·")[0];
     c.ceo = c.overdue >= 100e6 && !reason.trim();
+    c.trend = trendOf(c);
+    c.action = c.tierKey === "N4" ? "Chuyển hồ sơ thu hồi. Rà soát chứng từ gốc để xét trích dự phòng theo TT48/2019."
+      : c.tierKey === "N3" ? (c.b[5] > 0.5 ? "Dừng cấp dịch vụ mới. Chốt công văn đòi nợ có xác nhận gửi. Kế toán trưởng ký xác nhận phân nhóm."
+        : "Dừng cấp dịch vụ mới. Yêu cầu cam kết NGÀY cụ thể bằng văn bản trong 7 ngày.") : "";
     c.reasonShown = reason || (c.trend ? AUTO + " " + c.trend : c.reason);
     c.isAuto = !reason;
   }
@@ -295,7 +370,7 @@
     document.querySelectorAll(".page").forEach((p) => p.classList.toggle("on", all || p.dataset.page === PAGE));
     if (navReady.put) navReady.put();
     const L = cf(), on = (p) => all || PAGE === p;
-    if (on("tong-quan")) { hero(); tiles(); aging(L); trend(); watch(L); salesMini(L); }
+    if (on("tong-quan")) { hero(); tiles(); aging(L); trend(); watch(L); salesMini(L); contracts(); }
     if (on("khach")) {
       const c = F.cust && D.cust.find((x) => x.code === F.cust);
       $("#khList").hidden = !!c; $("#khDetail").hidden = !c;
@@ -379,13 +454,25 @@
       `<div class="tile ${c}"><div class="l">${l}</div>${spark(KEY[i])}<div class="v">${typeof v === "number" && Math.abs(v) < 1e4 ? fmt.format(v) : money(v)}</div><div class="d">${d}</div></div>`).join("");
   }
 
+  // Tên ngắn cho nhãn biểu đồ: bỏ phần pháp lý / ngành nghề chung ở đầu tên ("CÔNG TY TNHH THƯƠNG MẠI ...")
+  // để còn phần phân biệt khách. Tooltip và bảng vẫn hiện tên đầy đủ.
+  const DAU_TEN = /^(CÔNG TY|CTY|TỔNG CÔNG TY|TNHH|CỔ PHẦN|CP|TRÁCH NHIỆM HỮU HẠN|MỘT THÀNH VIÊN|MTV|HAI THÀNH VIÊN TRỞ LÊN|THƯƠNG MẠI|TM|XUẤT NHẬP KHẨU|XNK|DỊCH VỤ|DV|ĐẦU TƯ|SẢN XUẤT|SX|VÀ|&|TẬP ĐOÀN|PHÁT TRIỂN|CÔNG NGHỆ|LLC|JSC|OOO)[\s,.-]+/i;
+  const DUOI_TEN = /[\s,.-]+(VIỆT NAM|\(VIỆT NAM\)|VN|CO\.?,?\s*LTD\.?|COMPANY LIMITED|LIMITED|LTD\.?|PTE\.? LTD\.?|LLC|INC\.?|JSC|CORP\.?|GMBH|SP\. Z O\.O\.)$/i;
+  function tenNgan(n) {
+    let s = String(n || "").trim(), t;
+    while ((t = s.replace(DAU_TEN, "")) !== s && t.length >= 2) s = t;
+    while ((t = s.replace(DUOI_TEN, "")) !== s && t.length >= 2) s = t;
+    return s || String(n || "");
+  }
+  const gon = (n, max) => { const s = tenNgan(n); return s.length > max ? s.slice(0, max - 1) + "…" : s; };
+
   // ai đang nợ: 5 khách lớn nhất của một nhóm, để đưa vào tooltip
   const topWho = (list, val, n = 5) => list.filter((c) => val(c) > 0.5).sort((a, b) => val(b) - val(a)).slice(0, n)
     .map((c) => [c.name, val(c)]);
   const tipBody = (title, total, of, who, extra) =>
     `<h4>${esc(title)}</h4><div class="tr"><span>Số tiền</span><b>${money(total)}</b></div>` +
     (of ? `<div class="tr"><span>Tỷ trọng</span><b>${pct(total, of)}</b></div>` : "") + (extra || "") +
-    (who && who.length ? `<div class="mu">Ai đang nợ nhiều nhất</div>` + who.map(([n, v]) => `<div class="tr"><span>${esc(n.length > 34 ? n.slice(0, 33) + "…" : n)}</span><b>${short(v)}</b></div>`).join("") : "");
+    (who && who.length ? `<div class="mu">Ai đang nợ nhiều nhất</div>` + who.map(([n, v]) => `<div class="tr"><span>${esc(gon(n, 34))}</span><b>${short(v)}</b></div>`).join("") : "");
 
   function aging(L) {
     const v = BUCKETS.map((_, i) => L.reduce((a, c) => a + c.b[i], 0)), tot = v.reduce((a, b) => a + b, 0);
@@ -463,8 +550,9 @@
   function custPage(c) {
     const pay = D.payers.find((p) => String(p.code).toUpperCase() === c.code.toUpperCase());
     $("#kdHead").innerHTML = `<div><h2>${esc(c.name)}</h2><p class="sub">${esc(c.code)} · ${esc(c.term || "chưa có term")} · ${badge(c)}
-      ${c.ceo ? '<span class="ceo">CEO cần xem</span>' : ""} ${dcBadge(c.dc)}</p><p class="reason">${reasonCell(c)}</p>
-      ${c.action ? `<p class="act">Việc cần làm: ${esc(c.action)}</p>` : ""}</div>`;
+      ${c.ceo ? '<span class="ceo">CEO cần xem</span>' : ""} ${dcBadge(c.dc)}${(c.alerts || []).map((a) => `<span class="hd ${a.muc}" title="${esc(a.note)}">${esc(a.loai)}</span>`).join("")}</p><p class="reason">${reasonCell(c)}</p>
+      ${c.action ? `<p class="act">Việc cần làm: ${esc(c.action)}</p>` : ""}
+      ${c.bySales ? `<p class="sub">Job theo Sales: ${esc(c.bySales)}</p>` : ""}</div>`;
     const dW = c.lwTotal ? c.total - c.lwTotal : null;
     $("#kdTiles").innerHTML = [
       ["Tổng nợ", money(c.total), dW === null ? "khách mới tuần này" : `<span class="${dW > 0 ? "neg" : "pos"}">${dW > 0 ? "▲" : "▼"} ${short(Math.abs(dW))}</span> so với tuần trước`, ""],
@@ -493,7 +581,8 @@
         `<tr><td colspan="3"><b>Tổng</b></td><td class="n"><b>${money(c.total)}</b></td></tr></table></div>`;
     });
     const SIG = ["Nợ tăng mà quá hạn không giảm", "Quá hạn đứng yên so với tuần trước", "Nợ trên 60 ngày tăng",
-                 "Chưa có giải trình của Sales", "Chưa có điều khoản thanh toán", "Toàn bộ dư nợ đã quá hạn"];
+                 "Chưa có giải trình của Sales", "Chưa có điều khoản thanh toán", "Toàn bộ dư nợ đã quá hạn",
+                 "Lỡ hẹn: đã qua ngày Sales hẹn mà quá hạn không giảm"];
     card("cKdSig", "Dấu hiệu rủi ro", c.trend ? esc(c.trend) : "", [["list", "Danh sách"]], (t, el) => {
       el.innerHTML = c.s ? `<ul class="sig">${SIG.map((x, i) => `<li class="${c.s[i] ? "on" : ""}"><b>S${i + 1}</b> ${x}</li>`).join("")}</ul>` : `<p class="empty">Chưa có số AR Risk cho khách này.</p>`;
     });
@@ -542,6 +631,19 @@
       if (!W.length) return (el.innerHTML = `<p class="empty">Không có khách quá hạn.</p>`);
       if (t === "table") return table(el, [["Khách hàng", ""], ["Quá hạn", "n"], ["Nhóm", ""]], W.map((c) => [c.name, money(c.overdue), c.tier]), (i) => pick(W[i]));
       hbar(el, W.map((c) => ({ k: c.code, label: c.name, value: c.overdue, color: TIER_COLOR[c.tierKey] || NEU, tip: custTip(c), click: () => pick(c) })));
+    });
+  }
+  function contracts() {
+    const A = (D.contracts || []).filter((a) => !F.sales || a.sales.includes(F.sales));
+    const dem = (f) => A.filter(f).length;
+    const sub = A.length ? `${dem((a) => a.muc === "do")} hết hạn còn nợ · ${dem((a) => a.loai.startsWith("Sắp"))} sắp hết hạn · ${dem((a) => a.loai.startsWith("Chưa có credit"))} chưa có term · ${dem((a) => a.loai.includes("vừa đổi"))} term vừa đổi. Bấm để mở trang khách.` : "";
+    card("cContracts", "Hợp đồng & credit term", sub, [["table", "Bảng"]], (t, el) => {
+      if (!D.contracts) return (el.innerHTML = `<p class="empty">File báo cáo này chưa có sheet Contracts.</p>`);
+      if (!A.length) return (el.innerHTML = `<p class="empty">Không có cảnh báo hợp đồng / credit term tuần này.</p>`);
+      tableHtml(el, ["Cảnh báo", "Khách hàng", "Sales", "Số tiền", "Hết hạn", "Còn lại", "Ghi chú"],
+        A.map((a) => [`<span class="hd ${a.muc}">${esc(a.loai)}</span>`, esc(a.name), esc(a.sales || "—"), a.balance > 0.5 ? money(a.balance) : "—",
+                      esc(a.han || "—"), a.left === null || a.left === undefined || a.left === "" ? "—" : esc(a.left + " ngày"), esc(a.note)]),
+        (i) => pick(D.cust.find((c) => c.code.toUpperCase() === A[i].code.toUpperCase())));
     });
   }
   function salesMini(L) {
@@ -674,7 +776,7 @@
       a0 = a1;
     });
     g += `<text x="${C}" y="${C - 4}" text-anchor="middle" style="font-size:12px">${esc(center)}</text><text x="${C}" y="${C + 16}" text-anchor="middle" style="font:700 17px var(--fh);fill:var(--ink)">${short(total)}</text>`;
-    const lg = items.map((x) => `<div class="row" data-k="${esc(x.k)}"><span class="sw" style="background:${x.color}"></span><span>${esc(x.label.length > 38 ? x.label.slice(0, 37) + "…" : x.label)}</span><b class="n">${short(x.value)}</b><span class="n">${pct(x.value, tot)}</span></div>`).join("");
+    const lg = items.map((x) => `<div class="row" data-k="${esc(x.k)}"><span class="sw" style="background:${x.color}"></span><span>${esc(gon(x.label, 38))}</span><b class="n">${short(x.value)}</b><span class="n">${pct(x.value, tot)}</span></div>`).join("");
     el.innerHTML = `<div class="donut-wrap"><svg viewBox="0 0 220 220" width="220" height="220" role="img">${g}</svg><div class="lg">${lg}</div></div>`;
     wire(el, items);
   }
@@ -686,7 +788,7 @@
     let g = "";
     items.forEach((x, i) => {
       const w = Math.max(6, ((W - L - R) * Math.abs(x.value)) / max), y = 4 + i * rowH;
-      const lab = x.label.length > maxCh ? x.label.slice(0, maxCh - 1) + "…" : x.label;
+      const lab = gon(x.label, maxCh);
       g += `<g data-k="${esc(x.k)}"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/>
         <text x="${L - 10}" y="${y + 19}" text-anchor="end" style="fill:var(--ink-2);font-size:12px">${esc(lab)}</text>
         <path d="M${L},${y + 6} h${w - 4} a4,4 0 0 1 4,4 v10 a4,4 0 0 1 -4,4 h-${w - 4} z" fill="${x.color}"/>
@@ -703,7 +805,7 @@
     let g = "";
     rows.forEach((r, i) => {
       const y = 4 + i * rowH; let x = L;
-      g += `<g data-k="${esc(r.k)}"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/><text x="${L - 10}" y="${y + 19}" text-anchor="end" style="fill:var(--ink-2);font-size:12px">${esc(r.label.length > maxCh ? r.label.slice(0, maxCh - 1) + "…" : r.label)}</text>`;
+      g += `<g data-k="${esc(r.k)}"><rect x="0" y="${y}" width="${W}" height="${rowH}" fill="transparent"/><text x="${L - 10}" y="${y + 19}" text-anchor="end" style="fill:var(--ink-2);font-size:12px">${esc(gon(r.label, maxCh))}</text>`;
       r.parts.forEach((p) => { if (p.value <= 0.5) return; const w = ((W - L - R) * p.value) / max; g += `<rect x="${x}" y="${y + 6}" width="${Math.max(1, w - 2)}" height="18" rx="2" fill="${p.color}"/>`; x += w; });
       g += `<text x="${x + 8}" y="${y + 19}" style="fill:var(--ink);font-size:12px">${short(r.total)}</text></g>`;
     });

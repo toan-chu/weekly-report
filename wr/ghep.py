@@ -347,3 +347,86 @@ def doc_job_no_cu(thu_muc) -> Dict[str, List[Tuple[int, str, str]]]:
                     ra.setdefault(ma, []).append((int(hd), job, sale))
         wb.close()
     return ra
+
+
+# --- WR-08: credit term theo từng khách — FIN giữ một bảng trong sample/ (Head of FIN 12/10) ------------
+
+SHEET_CREDIT_TERM = "Credit term"
+COT_CREDIT_TERM = ["Mã khách Misa", "Tên khách", "Credit term", "Tool hiểu là", "Nguồn / ghi chú", "Ngày áp dụng"]
+GOI_Y_TERM = ["thanh toán ngay", "7 days", "15 days", "30 days", "45 days", "60 days", "90 days",
+              "14 ngày của tháng tiếp theo"]
+
+
+def hieu_term(term: str) -> str:
+    """Câu tiếng Việt tool hiểu term thế nào — để FIN soát."""
+    from . import soghi as sg
+    t = str(term or "").strip()
+    if not t:
+        return "(trống → tạm tính 30 ngày)"
+    if re.search(r"tháng (tiếp theo|sau|kế tiếp)|next month|following month", t.lower()):
+        m = re.search(r"(\d+)", t)
+        return f"ngày {m.group(1)} của tháng sau tháng hoá đơn" if m else "ngày 1 của tháng sau tháng hoá đơn"
+    n = sg.so_ngay_term(t)
+    return "trả ngay khi có hoá đơn" if n == 0 else f"{n} ngày sau ngày hoá đơn"
+
+
+def _bang_term(ws):
+    """Tìm trong 6 dòng đầu một dòng tiêu đề có cột mã khách và cột term. Nhận cả bảng tool tạo
+    (sheet "Credit term") lẫn bảng khách hàng của Head of FIN (credit-term-draft: 'Mã kh' / 'Code',
+    'Thời hạn' / 'Credit/Contrac term'). Trả (dòng tiêu đề, cột mã, cột term) hoặc None."""
+    for r, hang in enumerate(ws.iter_rows(min_row=1, max_row=6, values_only=True), start=1):
+        t = [_o(v).lower() for v in hang]
+        i_ma = next((i for i, x in enumerate(t) if x in ("mã khách misa", "mã kh", "mã khách", "code")), None)
+        i_term = next((i for i, x in enumerate(t) if x in ("credit term", "thời hạn") or
+                       ("credit" in x and "term" in x)), None)
+        if i_ma is not None and i_term is not None:
+            return r, i_ma, i_term
+    return None
+
+
+# WR-08: file Client Master chung trên OneDrive (nếu nằm ngoài sample/). runner/kiemtra đặt từ settings.json
+# trước khi chạy. Luôn đọc SAU CÙNG nên thắng mọi bảng term trong sample/.
+FILE_MASTER: Optional[Path] = None
+
+
+def dat_file_master(p) -> None:
+    global FILE_MASTER
+    FILE_MASTER = Path(p) if p else None
+
+
+def _cac_bang_term(thu_muc):
+    cac = []
+    if thu_muc and Path(thu_muc).is_dir():
+        cac = sorted(Path(thu_muc).glob("*.xlsx"), key=lambda f: f.stat().st_mtime)
+    if FILE_MASTER and FILE_MASTER.is_file():
+        cac = [FILE_MASTER]          # có file chung thì chỉ một nguồn sự thật, bỏ các bản trong sample/
+    for f in cac:
+        if f.name.startswith(("~$", "KIEM_TRA", "PHIEU")):
+            continue
+        try:
+            wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+        except Exception:
+            continue
+        for ws in wb.worksheets:
+            if ws.title == SHEET_JOB_NO_CU:
+                continue
+            vt = _bang_term(ws)
+            if vt:
+                yield ws, vt
+        wb.close()
+
+
+def doc_credit_term(thu_muc) -> Dict[str, str]:
+    """Bảng credit term trong sample/ → {MÃ KHÁCH (hoa): term}. Ô trống bỏ qua. File sửa sau thắng."""
+    ra: Dict[str, str] = {}
+    for ws, (r0, i_ma, i_term) in _cac_bang_term(thu_muc):
+        for r in ws.iter_rows(min_row=r0 + 1, values_only=True):
+            ma = _o(r[i_ma]) if len(r) > i_ma else ""
+            term = _o(r[i_term]) if len(r) > i_term else ""
+            if ma and term and term.lower() not in ("thời hạn", "credit term", "credit/contrac term"):
+                ra[ma.upper()] = term
+    return ra
+
+
+def co_file_credit_term(thu_muc) -> bool:
+    return any(True for _ in _cac_bang_term(thu_muc))

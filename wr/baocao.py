@@ -119,8 +119,11 @@ def ghi_bao_cao(
         c.fill = PatternFill("solid", fgColor=th.TIM)
         c.font = Font(name=th.PHONG_TIEU_DE, size=10, bold=True, color=th.TRANG)
         if 5 <= cot <= 11:
-            # ghi SỐ, không ghi công thức: dòng con (job) nằm xen giữa, SUM cả cột sẽ cộng trùng
-            c.value = round(d_tong(dong, cot), 2)
+            # WR-08 (Head of FIN muốn có công thức): chỉ cộng dòng KHÁCH (có Code) — dòng con job không
+            # có Code nên không bị cộng trùng; sửa số trên file thì dòng tổng tự đổi theo
+            cl = get_column_letter(cot)
+            c.value = (f'=SUMIFS({cl}{th.DONG_DAU_DU_LIEU}:{cl}{hang_tong - 1},$B${th.DONG_DAU_DU_LIEU}:'
+                       f'$B${hang_tong - 1},"<>")') if hang_tong > th.DONG_DAU_DU_LIEU else 0
             c.number_format = DINH_DANG_TIEN
             c.alignment = Alignment(horizontal="right")
     ws.cell(row=hang_tong, column=2, value="TOTAL")

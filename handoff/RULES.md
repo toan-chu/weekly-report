@@ -75,10 +75,33 @@ Chia theo đường lấy bằng chứng, không theo vai.
   No · Code · Name · Current · Total, chỉ số tổng, không phân tích, không tô màu (FIN 09/10).
 - Job chưa thanh toán (v0.5) lấy từ Misa: Bán hàng (trạng thái) + Sổ chi tiết 131 (job). Chỉ "Đã
   thanh toán" mới tính là đã trả; "Chưa" và "Một phần" liệt kê đủ tiền hoá đơn (FIN 09/10). Trạng
-  thái Misa là tại lúc xuất file: phiếu thu sau ngày cuối kỳ thì hoá đơn vẫn là nợ của kỳ. Dòng
-  con KHÔNG bị ép cộng bằng dòng khách — chỗ lệch hiện ở cột Đối chiếu để FIN sửa.
-- Excel báo cáo ghi SỐ, không ghi công thức; cách tính viết bằng lời ở sheet Methodology.
-  Đổi luật tính thì phải sửa Methodology trong cùng lần sửa.
+  thái Misa là tại lúc xuất file: phiếu thu sau ngày cuối kỳ thì hoá đơn vẫn là nợ của kỳ.
+- (v0.6, WR-08) Tiền dòng con = số CÒN NỢ của từng hoá đơn theo sổ (Chi tiết 131 đã trừ phiếu
+  thu), job lấy từ Sổ chi tiết 131, hoá đơn trước năm nay lấy job từ bảng job nợ cũ. Dòng con
+  luôn cộng bằng Total. Chứng từ không phải số hoá đơn (NVK) = "Điều chỉnh / chênh lệch tỷ giá".
+  Cột Đối chiếu chỉ còn để FIN dọn trạng thái trên Misa.
+- (WR-08) Sheet AR Risk ghi CÔNG THỨC của kế toán trưởng (S1–S6, Signals, Tier, Trend, Reason,
+  Required action); dòng TOTAL ở Receivables = SUMIFS chỉ cộng dòng khách. Các sheet khác ghi số.
+  Dashboard tự tính lại phần công thức. Đổi luật tính thì phải sửa Methodology cùng lần sửa.
+- (WR-08) Credit term ưu tiên: file mẫu credit term trong `sample/` (nhận theo tiêu đề cột, dùng
+  được nguyên file của kế toán trưởng) > khai `--credit-term` > tuần trước. Khách chưa có term
+  liệt kê ở sheet Contracts. Không còn phiếu khách mới: Sales điền thẳng Client Master (13/10).
+- (13/10) Client Master là file chung trên OneDrive. Trong `sample/` thì không cần cài gì; nằm chỗ khác
+  thì mỗi máy khai đường dẫn (`--client-master`, lưu `client_master_theo_may` trong settings.json, không
+  đi theo git). Có file chung → chỉ đọc file đó. Không thấy file → dùng `sample/` + cảnh báo ở Review.
+- (13/10, Chairman chọn A) S7 lỡ hẹn: lý do có ngày/tháng hẹn trả ('15/9', 'tháng 9' = cuối tháng,
+  'đầu tháng' = ngày 10, 'giữa tháng' = ngày 20) đã qua ngày chốt mà quá hạn không giảm so với tuần
+  trước → tính như S1–S3 (2 dấu hiệu = N3). Cột Promise date tool điền từ lý do, FIN sửa tay được.
+  Luật đọc ngày phải giống nhau ở `tindung.ngay_hen` và `ngayHen` của dashboard.
+- (13/10, KTT qua Chairman) N3 chỉ hiện câu "việc cần làm" trong báo cáo; FIN tự kiểm và quyết có
+  ngưng dịch vụ hay không. Tool không khoá, không gửi gì.
+- (13/10) Client Master (file chung OneDrive): FIN là người sửa lần cuối. Tool không có cột "xác nhận";
+  thay vào đó sheet Contracts báo "Credit term vừa đổi" mỗi khi term khác tuần trước để FIN soát.
+- (13/10) Hợp đồng hết hạn chưa gia hạn: tuổi nợ vẫn tính theo term cũ. Tool chỉ cảnh báo (sheet
+  Contracts + Summary + dashboard). Hạn đang áp dụng = ngày gia hạn + 12 tháng, không có thì ngày hết hạn.
+- (WR-08) Số dư dưới 1.000đ (tiền lẻ) không đưa vào báo cáo, liệt kê ở Review.
+- (WR-08) Khách nhiều Sales: cột "Jobs by Salesman" tách job + tiền theo từng Sales trên SMS;
+  job không thấy trên SMS ghi "Không thấy job trên SMS".
 
 - Có file SMS: SMS chỉ quyết NGÀY từng job, không bao giờ quyết tiền. SMS ghi nhiều
   hơn Misa thì bỏ job cũ nhất và liệt kê cho FIN gạch paid
@@ -115,8 +138,9 @@ Chia theo đường lấy bằng chứng, không theo vai.
   nhóm tuổi, và ngày mà mỗi khoản xuất hiện lần đầu.
 - Trang của một ngày chốt đã có thì ghi đè đúng trang đó, không tạo thêm bản.
 - Khi kế toán có file làm tay cho một tuần, bản của con người thắng bản của máy. Bản người
-  làm = file không có tab Review; cùng ngày chốt thì nó thắng mọi bản có tab Review, kể cả
-  bản sửa sau.
+  làm = file không có tab Review, HOẶC tên có chữ "human", HOẶC file tool ghi mà giờ sửa đã đổi
+  (FIN mở ra sửa thẳng rồi lưu — sổ ghi nhớ giờ ghi trong `file_tool`). Cùng ngày chốt thì bản
+  người thắng mọi bản tool, kể cả bản sửa sau.
 - Mất sổ ghi thì chạy ở chế độ khởi động lạnh và đánh dấu, không được dừng.
 
 ### 5.3a Không bao giờ để tool im lặng
@@ -141,6 +165,8 @@ Chia theo đường lấy bằng chứng, không theo vai.
 
 ### 5.5 Dashboard
 
+- Nhãn trên biểu đồ dùng tên ngắn (bỏ "CÔNG TY TNHH / CỔ PHẦN / THƯƠNG MẠI / XUẤT NHẬP KHẨU…" ở đầu,
+  "VIỆT NAM / LLC / LTD…" ở cuối); tooltip và bảng giữ tên đầy đủ (Chairman 13/10).
 - Sửa bất cứ file nào trong `dashboard/src` thì phải chạy `python dashboard/build.py` rồi commit
   cả `dashboard/Credit_Dashboard.html`. Máy FIN không build; nó chỉ nhận bản đã đóng gói qua git.
 - Không bắt người dùng chép dashboard bằng tay: tool tự đặt bản mới nhất vào thư mục gốc workspace

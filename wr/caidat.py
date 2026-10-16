@@ -76,6 +76,12 @@ class CauHinh:
     def log(self) -> Path: return self._d("thu_muc_log") / "runner.log"
     @property
     def mau_chuan(self) -> Path: return GOC / "template" / "Bang_cong_no_MAU_CHUAN.xlsx"
+    @property
+    def client_master(self) -> Optional[Path]:
+        """WR-08: file Client Master chung trên OneDrive nằm NGOÀI workspace (tuỳ chọn, theo từng máy).
+        Không đặt thì tool chỉ đọc bảng term trong sample/."""
+        p = (self.raw.get("client_master_theo_may") or {}).get(ten_may()) or self.raw.get("client_master") or ""
+        return Path(p) if p else None
 
     def cac_thu_muc(self):
         ra = []
@@ -135,6 +141,19 @@ def dat_workspace(duong_dan, tao_thu_muc_con: bool = True) -> "CauHinh":
     cfg = CauHinh(raw)
     cfg.tao_cac_thu_muc()
     return cfg
+
+
+def dat_client_master(duong_dan: str) -> Optional[Path]:
+    """Ghi đường dẫn file Client Master của máy này. Chuỗi rỗng = bỏ (quay về sample/)."""
+    p = str(duong_dan or "").strip().strip('"')
+    raw = _doc_raw()
+    theo_may = raw.setdefault("client_master_theo_may", {})
+    if p:
+        theo_may[ten_may()] = str(Path(p).expanduser())
+    else:
+        theo_may.pop(ten_may(), None)
+    TEP_CAU_HINH.write_text(json.dumps(raw, ensure_ascii=False, indent=2), encoding="utf-8")
+    return Path(theo_may[ten_may()]) if p else None
 
 
 def doc(duong_dan: Optional[Path] = None) -> CauHinh:

@@ -72,8 +72,14 @@ Không có file Chi tiết mà có file Tuổi nợ cũ → chạy luật v0.3 (
 | Methodology | 1 con số: tính thế nào, lấy từ file nào cột nào | cố định trong mã |
 | Review | đối chiếu và những chỗ tool không chắc | mọi bước |
 
-Excel ghi SỐ, không ghi công thức (dashboard đọc file bằng trình duyệt, không tính lại được);
-cách tính viết bằng lời ở sheet Methodology.
+Excel ghi số, riêng AR Risk ghi công thức của kế toán trưởng và dòng TOTAL Receivables là SUMIFS
+(WR-08). Dashboard không đọc được kết quả công thức (file chưa mở bằng Excel thì chưa có số) nên
+tự tính lại S1–S6, Tier, Trend, Required action bằng JS. Cách tính viết bằng lời ở Methodology.
+WR-08 thêm: cột "Jobs by Salesman" ở AR Risk (`tindung.chia_theo_sales`); credit term đọc từ file
+mẫu trong `sample/` (`ghep.doc_credit_term`), file mẫu dựng bằng `wr/khachhang.py` (Client Master List);
+`khachhang.doc_master` + `canh_bao_hop_dong` → sheet Contracts (`ghifull.ghi_contracts`) + 5 chỉ số Summary
+(hd_het_han, hd_sap_het_30, khach_chua_term, term_doi, khach_chua_han_hd); dashboard đọc sheet Contracts. File Client Master ngoài `sample/`: `caidat.CauHinh.client_master` →
+`ghep.dat_file_master` (runner/kiemtra đặt trước khi chạy); `_cac_bang_term` chỉ đọc file đó khi có.
 
 ## Dashboard (WR-05)
 
@@ -84,13 +90,16 @@ lý do trễ hạn trong Receivables khác bản tool viết. Nút In / Lưu PDF
 WR-07: mỗi tab là một trang (Tổng quan · Khách hàng · Sales · Nợ xấu · Phải trả · Dòng tiền). Bấm
 một khách / một Sales → trang chi tiết; bộ lọc ghi trên thanh địa chỉ (`#sales?s=…&c=…`) nên đi
 theo qua các tab và nút Back chạy. In / Lưu PDF in đủ mọi trang.
+13/10: `tenNgan` rút tên khách cho nhãn biểu đồ; `ngayHen` + S7 lỡ hẹn (giống `tindung.ngay_hen`), đọc
+thêm cột Promise date của AR Risk khi lý do không có ngày.
 
 ## Sổ ghi (_tool/so-ghi.json)
 
 Một trang cho mỗi ngày chốt: từng khách (số dư, 6 nhóm, lô nợ, term, salesman, job, lý do)
 + `lich_su_tuan` (các con số của sheet Summary từng tuần). Báo cáo ở thư mục gốc được đọc
-lại thành trang của đúng ngày chốt ghi trong file. Cùng ngày chốt: bản không có tab Review
-(bản người làm) thắng bản tool; cùng loại thì bản sửa sau cùng thắng.
+lại thành trang của đúng ngày chốt ghi trong file. Cùng ngày chốt: bản người làm (không có tab
+Review, tên có "human", hoặc file tool đã bị sửa sau khi ghi — `so.file_tool`) thắng bản tool;
+cùng loại thì bản sửa sau cùng thắng.
 
 ## Hai nút cho người dùng
 

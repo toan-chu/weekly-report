@@ -97,6 +97,8 @@ class SoGhi:
         self.phai_tra: Dict[str, Dict[str, float]] = {}
         # trang của ngày chốt nào lấy từ file nào, có phải bản người làm (không có tab Review)
         self.nguon_trang: Dict[str, dict] = {}
+        # WR-08: báo cáo do tool ghi: tên file -> giờ sửa lúc tool ghi. Giờ sửa đổi = người đã sửa trên file
+        self.file_tool: Dict[str, float] = {}
         if self.duong_dan.exists():
             self._doc()
 
@@ -110,6 +112,7 @@ class SoGhi:
         self.lich_su_tuan = raw.get("lich_su_tuan", {})
         self.phai_tra = raw.get("phai_tra", {})
         self.nguon_trang = raw.get("nguon_trang", {})
+        self.file_tool = raw.get("file_tool", {})
         for ngay, khach in raw.get("trang", {}).items():
             self.trang[ngay] = {k: HoSoKhach.tu_dict(v) for k, v in khach.items()}
 
@@ -125,6 +128,7 @@ class SoGhi:
             "lich_su_tuan": dict(sorted(self.lich_su_tuan.items())),
             "phai_tra": dict(sorted(self.phai_tra.items())),
             "nguon_trang": self.nguon_trang,
+            "file_tool": self.file_tool,
             "trang": {
                 ngay: {k: v.thanh_dict() for k, v in khach.items()}
                 for ngay, khach in sorted(self.trang.items())

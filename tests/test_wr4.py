@@ -282,7 +282,7 @@ def test_tha_4_file_ra_full_report(ws):
     assert runner.quet_thu_muc(ws) == 1
     f = next(ws.ra.glob("2026_W40_Credit_Report_*.xlsx"))
     wb = openpyxl.load_workbook(f)
-    assert wb.sheetnames == [th.SHEET_SUMMARY, th.SHEET_BANG, th.SHEET_RISK, th.SHEET_PAYABLE,
+    assert wb.sheetnames == [th.SHEET_SUMMARY, th.SHEET_BANG, th.SHEET_RISK, th.SHEET_CONTRACT, th.SHEET_PAYABLE,
                              th.SHEET_CASH, th.SHEET_INVOICES, th.SHEET_METHOD, th.SHEET_REVIEW]
     rec = wb[th.SHEET_BANG]
     assert [c.value for c in rec[5]][2] == "Customer's Name" and rec.cell(5, 13).value == "Job Number"
@@ -320,7 +320,7 @@ def test_tuan_sau_co_lich_su_va_tach_nhap_bo_sung(ws, monkeypatch):
     dong = {r[5]: r for r in sm.iter_rows(min_row=20, values_only=True) if r and r[5]}
     assert dong["tong_phai_thu"][1] == 370 and dong["tong_phai_thu"][2] == 415
     risk = {r[1]: r for r in wb[th.SHEET_RISK].iter_rows(min_row=6, values_only=True) if r[1]}
-    assert risk["KB"][9] == 15, "B: dư đầu kỳ Misa 115 − báo cáo tuần trước 100 = nhập bổ sung 15"
+    assert risk["KB"][10] == 15, "B: dư đầu kỳ Misa 115 − báo cáo tuần trước 100 = nhập bổ sung 15"
     pay = {r[1]: r for r in wb[th.SHEET_PAYABLE].iter_rows(min_row=6, values_only=True) if r[1]}
     assert pay["V1"][3] == pay["V1"][4] == 470, "Payable theo mẫu FIN: Current = Total = số dư cuối"
 
@@ -391,8 +391,10 @@ def test_dong_con_theo_job_va_hoa_don_cong_dung_total(ws):
     assert rec.cell(r_a + 1, 12).value == "Lê Thị Hằng", "tên ngắn trên SMS đổi sang tên đầy đủ"
     assert rec.cell(r_a + 1, 6).value is None and rec.cell(r_a + 1, 8).value == 100, \
         "dòng con nằm đúng cột tuổi của khách (KA: 100 ở 31 - 60)"
-    tong = rec.cell(rec.max_row, 5).value
-    assert rec.cell(rec.max_row, 2).value == "TOTAL" and tong == 370
+    ct = rec.cell(rec.max_row, 5).value
+    assert rec.cell(rec.max_row, 2).value == "TOTAL" and ct.startswith("=SUMIFS(E6:"), "dòng tổng là công thức"
+    tong = sum(rec.cell(r, 5).value for r in range(6, rec.max_row) if rec.cell(r, 2).value)
+    assert tong == 370, "chỉ dòng khách (có Code) mới vào tổng"
     inv = wb[th.SHEET_INVOICES]
     tien = [r[9] for r in inv.iter_rows(min_row=6, values_only=True) if isinstance(r[0], int)]
     assert sum(tien) == tong

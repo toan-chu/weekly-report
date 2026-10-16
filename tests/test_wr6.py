@@ -91,20 +91,43 @@ def test_dong_con_tu_misa_va_mau_doi_chieu(tmp_path, so, monkeypatch):
     b = d["KB"]
     assert b.doi_chieu["mau"] == "do" and b.doi_chieu["lech"] == -30, "luật FIN: 'một phần' vẫn liệt kê đủ"
     assert "một phần" in b.doi_chieu["goi_y"]
-    assert any(g["job"].startswith("HĐ 00000010") for g in b.dong_con), "hoá đơn không có job vẫn hiện"
+    assert any(g["job"].startswith("HĐ 00000011") for g in b.dong_con), "hoá đơn không có job vẫn hiện"
+    assert not any(g.get("so_hd") == "00000010" for g in b.dong_con), "HĐ 10 sổ đã trả hết (thu cũ nhất trước)"
     assert d["KC"].doi_chieu["mau"] == "vang"
-    assert d["KK"].doi_chieu["mau"] == "cam" and d["KK"].dong_con == []
+    assert d["KK"].doi_chieu["mau"] == "cam"
+    assert [g["job"] for g in d["KK"].dong_con] == ["HĐ 00000030 (không thấy trên Bán hàng)"]
+    for x in kq.dong:
+        if x.dong_con:
+            assert abs(sum(g["tien"] for g in x.dong_con) - x.total) < 1, f"{x.ma}: các dòng job cộng = dư nợ"
     assert kq.het_no_con_hd == [("CÔNG TY D", 1, 25)]
     assert kq.ten_khong_ghep == [("CÔNG TY LẠ", 1, 7)]
     assert sum(x.total for x in kq.dong) == 370, "dư nợ dòng khách giữ nguyên số Misa"
 
 
 def test_da_thanh_toan_sau_ngay_cuoi_ky_van_tinh_la_no(tmp_path, so):
+    """Bán hàng ghi 'Đã thanh toán' nhưng phiếu thu nằm sau ngày cuối kỳ: vẫn là số Misa ghi chưa trả
+    của kỳ này (cột Đối chiếu); dòng job thì luôn theo sổ."""
     sct = SCT + [(D(2026, 10, 5), "", A, 0, 50, "", "Thu tiền khách hàng theo hóa đơn 00000002")]
     t, c, jm = _job_misa(tmp_path, sct=sct)
     a = next(x for x in tindung.tinh_full(t, c, so, job_misa=jm).dong if x.ma == "KA")
-    hd2 = [g for g in a.dong_con if g["so_hd"] == "00000002"]
-    assert hd2 and "sau kỳ" in hd2[0]["trang_thai"], "file xuất 08/10, phiếu thu 05/10 > cuối kỳ 02/10"
+    assert a.doi_chieu["tong_job"] == 150
+    assert sum(g["tien"] for g in a.dong_con) == 100
+
+
+def test_tien_job_la_so_con_no_cua_hoa_don(tmp_path, so, monkeypatch):
+    """WR-08 (FIN sửa tay W41): hoá đơn trả một phần → dòng job ghi số CÒN NỢ, không ghi nguyên tiền HĐ."""
+    monkeypatch.setattr(tindung, "DUNG_SAI_KHOP", 0.5)
+    th_ = [r if r[0] != "KB" else ("KB", B, 130, 0, 0, 45, 85, 0) for r in TH40]
+    t = misa.doc_tong_hop(tao_tong_hop(tmp_path / "th.xlsx", th_))
+    ct = {k: list(v) for k, v in CT40.items()}
+    ct[B].append((D(2026, 10, 1), None, "", "Thu tiền theo HĐ 00000012", "1121", 0, 15))
+    c = chitiet.doc_chi_tiet(tao_chi_tiet(tmp_path / "ct.xlsx", ct))
+    jm = banhang.doc_job_misa(tao_ban_hang(tmp_path / "bh.xlsx", BH), tao_so_chi_tiet(tmp_path / "sct.xlsx", SCT),
+                              [(k.ma, k.ten) for k in t.dong.values()])
+    b = next(x for x in tindung.tinh_full(t, c, so, job_misa=jm).dong if x.ma == "KB")
+    j12 = [g for g in b.dong_con if g["job"] == "EXHANA26090012"]
+    assert j12 and j12[0]["tien"] == 45, "HĐ 12 tiền 60, thu 15 theo đúng số HĐ → còn 45"
+    assert sum(g["tien"] for g in b.dong_con) == 85
 
 
 def test_tha_6_file_ra_cot_doi_chieu_va_review(ws, monkeypatch):

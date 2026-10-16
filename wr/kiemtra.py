@@ -115,7 +115,21 @@ def _ghi(ws, hang, gia_tri, cot_tien=(), cot_vang=()):
             o.fill = VANG
 
 
+def tao_file_credit_term(thu_muc: Path, khach, ghi_log) -> Optional[Path]:
+    """WR-08: Client Master List (credit term + hợp đồng), điền sẵn khách và term tool đang biết.
+    Chỉ tạo khi sample/ chưa có bảng term nào. khach: [(mã Misa, tên, term)]."""
+    from . import khachhang as kh
+    if ghep.co_file_credit_term(thu_muc):
+        return None
+    dong = [dict(ma=ma, ten=ten, term=term or None) for ma, ten, term in sorted(khach, key=lambda x: (bool(x[2]), x[1]))]
+    dich = kh.ghi_master(Path(thu_muc) / "SAMPLE_credit_term_khach.xlsx", dong,
+                         list(dict.fromkeys(th.TEN_SALES_DAY_DU.values())))
+    ghi_log(f"Đã tạo {dich.name} trong sample: {sum(1 for x in khach if not x[2])} khách chưa có term (ô vàng)")
+    return dich
+
+
 def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path]:
+    ghep.dat_file_master(getattr(cfg, "client_master", None))
     f_ghep = ghep.tim_file_ghep(cfg.ghep)
     if f_ghep is None:
         ghi_log(f"Chưa có file ghép khách trong {cfg.ghep}. Bỏ file FIN đã điền vào đó rồi bấm lại.")
@@ -231,7 +245,8 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
             ct_doc = chitiet.doc_chi_tiet(f_ct)
             ct_doc.cat_den(tong_hop.den_ngay)
             kq = tindung.tinh_full(tong_hop, ct_doc, so, dong_sms, bang,
-                                   job_no_cu=ghep.doc_job_no_cu(cfg.ghep), job_misa=job_misa)
+                                   job_no_cu=ghep.doc_job_no_cu(cfg.ghep), job_misa=job_misa,
+                                   credit_terms=ghep.doc_credit_term(cfg.ghep))
         else:
             kq = tinhtoan.tinh_bang_sms(tong_hop, tn_doc[1], so, dong_sms, bang, tn_doc[1].den_ngay)
         theo_ma = {k.ma.upper(): k.ma for k in tong_hop.dong.values()}
@@ -300,6 +315,8 @@ def kiem_tra(cfg, so: sg.SoGhi, ghi_log: Callable[[str], None]) -> Optional[Path
             nc.cell(row=h, column=c).fill = VANG
     if not dong_nc:
         _ghi(nc, 2, ["", "Không có nợ cũ nào thiếu job"])
+    if tong_hop and f_ct:
+        tao_file_credit_term(Path(cfg.ghep), [(d.ma, d.ten, d.credit_term) for d in kq.dong], ghi_log)
     tep_tc = Path(cfg.ghep) / "Tham_chieu_job_no_cu.xlsx"
     if dong_nc and not ghep.co_file_job_no_cu(cfg.ghep):     # gói W40 có sẵn SAMPLE_Tham_chieu_... thì thôi
         tc = openpyxl.Workbook()
