@@ -345,10 +345,10 @@ def chay_full(
                         "Đối chiếu.")
     credit_terms = ghep.doc_credit_term(thu_muc_mau)
     kq = tindung.tinh_full(th, ct, so, dong_sms, bang, pt, ngay_chot, job_no_cu=job_no_cu, job_misa=job_misa,
-                           credit_terms=credit_terms)
+                           credit_terms=credit_terms, ma_no_cu=ghep.ma_job_no_cu(thu_muc_mau))
     # WR-08 (Chairman 13/10): cảnh báo hợp đồng / credit term từ Client Master → sheet Contracts + Summary
     from wr import khachhang
-    master = khachhang.doc_master(thu_muc_mau)
+    master = khachhang.doc_master(thu_muc_mau, ngay_chot)
     term_truoc = {str(m).upper(): hs.credit_term for m, hs in (so.trang_truoc(ngay_chot) or {}).items()
                   if getattr(hs, "credit_term", "")}
     canh_bao_hd = khachhang.canh_bao_hop_dong(master, kq.rui_ro, ngay_chot, term_truoc)
@@ -359,6 +359,7 @@ def chay_full(
         "khach_chua_term": dem(lambda x: x == "Chưa có credit term"),
         "term_doi": dem(lambda x: x == "Credit term vừa đổi"),
         "khach_chua_han_hd": sum(1 for r in kq.rui_ro if not (master.get(r.ma.upper()) or {}).get("han_dung")),
+        "khach_chua_hd": sum(1 for r in kq.rui_ro if not (master.get(r.ma.upper()) or {}).get("co_hd")),
     })
     # Lịch sử tuần: tuần đầu dùng v0.4 thì dựng lại điểm của tuần trước từ báo cáo cũ (sổ ghi)
     truoc_ngay = so.ngay_trang_truoc(ngay_chot)

@@ -25,6 +25,7 @@ DONG_TIEU_DE = 6       # tiêu đề cột (tool đọc dòng này)
 DONG_DAU = 7
 DONG_CUOI = 400        # công thức + danh sách thả xuống kéo sẵn tới đây cho dòng Sales thêm mới
 NGAY = "dd/mm/yyyy"
+DAU_TICH = "✓"
 
 # (khoá, tiêu đề, nhóm, độ rộng, loại) — loại: ten | ngay | so | cong_thuc
 COT = [
@@ -38,6 +39,7 @@ COT = [
     ("so_tk",    "Số tài khoản",          "Tài khoản ngân hàng", 18, "ten"),
     ("ngan_hang","Ngân hàng",             "Tài khoản ngân hàng", 18, "ten"),
     ("chi_nhanh","Chi nhánh",             "Tài khoản ngân hàng", 16, "ten"),
+    ("co_hd",    "Đã có hợp đồng",        "Hợp đồng", 10, "tick"),   # FIN 19/10 (Sales đề nghị): ✓ = đã ký
     ("so_hd",    "Số hợp đồng",           "Hợp đồng", 16, "ten"),
     ("loai_hd",  "Loại hợp đồng",         "Hợp đồng", 18, "ten"),
     ("term",     "Thời hạn",              "Hợp đồng", 30, "ten"),
@@ -73,7 +75,9 @@ def _cong_thuc(k: str, r: int) -> str:
     if k == "het_moi":
         return f'=IF({c["gia_han"]}{r}="","",EDATE({c["gia_han"]}{r},12))'
     if k == "han_dung":
-        return f'=IF({c["het_moi"]}{r}<>"",{c["het_moi"]}{r},IF({c["het_han"]}{r}="","",{c["het_han"]}{r}))'
+        # gia hạn chỉ có hiệu lực khi ngày gia hạn đã tới; chưa tới thì vẫn là ngày hết hạn hiện tại
+        gh, hm, hh = (f'{c[x]}{r}' for x in ("gia_han", "het_moi", "het_han"))
+        return (f'=IF(AND({hm}<>"",{gh}<=TODAY()),{hm},IF({hh}<>"",{hh},IF({hm}<>"",{hm},"")))')
     if k == "con_lai":
         return f'=IF({c["han_dung"]}{r}="","",{c["han_dung"]}{r}-TODAY())'
     if k == "trang_thai":
@@ -133,7 +137,10 @@ def _o_du_lieu(o, loai: str, co_gia_tri: bool) -> None:
     o.border = VIEN
     if loai == "cong_thuc":
         o.fill = PatternFill("solid", fgColor=th.XAM_NHAT)
-    if loai in ("ngay",) or o.column_letter in (VI_TRI["het_moi"], VI_TRI["han_dung"]):
+    if loai == "tick":
+        o.font = Font(name=th.PHONG_NOI_DUNG, size=12, bold=True, color="2E7D32")
+        o.alignment = Alignment(horizontal="center", vertical="top")
+    elif loai in ("ngay",) or o.column_letter in (VI_TRI["het_moi"], VI_TRI["han_dung"]):
         o.number_format = NGAY
         o.alignment = Alignment(horizontal="center", vertical="top")
     elif o.column_letter in (VI_TRI["stt"], VI_TRI["con_lai"]):
@@ -171,6 +178,11 @@ def ghi_master(dich: Path, dong: Sequence[Dict], sales: Sequence[str], ghi_chu: 
         dv = DataValidation(type="list", formula1=nguon, allow_blank=True, showErrorMessage=False)
         dv.add(f"{c[cot]}{DONG_DAU}:{c[cot]}{DONG_CUOI}")
         ws.add_data_validation(dv)
+    dv = DataValidation(type="list", formula1=f'"{DAU_TICH}"', allow_blank=True, showErrorMessage=False,
+                        promptTitle="Đã có hợp đồng", prompt="Chọn ✓ nếu đã ký hợp đồng; chưa có thì để trống",
+                        showInputMessage=True)
+    dv.add(f"{c['co_hd']}{DONG_DAU}:{c['co_hd']}{DONG_CUOI}")
+    ws.add_data_validation(dv)
     dv = DataValidation(type="date", operator="greaterThan", formula1="DATE(2015,1,1)", allow_blank=True,
                         errorTitle="Ngày", error="Nhập ngày dạng dd/mm/yyyy")
     for k in ("hieu_luc", "het_han", "gia_han", "job_dau"):
@@ -237,6 +249,7 @@ def _huong_dan(ws, sales: Sequence[str]) -> None:
     dong(6, "FIN", "Điền cột Mã kh (mã khách trên Misa) và xác nhận Thời hạn đúng hợp đồng.")
     dong(7, "Tool báo cáo tuần", "Chỉ ĐỌC cột Mã kh và Thời hạn. Không ghi gì vào file này.")
     dong(8, "Cột nền xám", "Tự tính (STT, hết hạn sau gia hạn, còn lại, trạng thái) — đừng gõ đè.")
+    dong(10, "Đã có hợp đồng", "Chọn ✓ trong ô (bấm mũi tên) nếu khách đã ký hợp đồng; chưa có thì để trống.")
     dong(9, "Tiêu đề dòng 6", "Giữ nguyên chữ. Chèn cột thêm được; đổi tên cột Mã kh / Thời hạn thì tool không đọc được.")
 
     muc(11, "2. Màu trong bảng")
@@ -280,6 +293,11 @@ def _huong_dan(ws, sales: Sequence[str]) -> None:
 NGUONG_SAP_HET = (30, 60, 90)
 
 
+def _hom_nay():
+    import datetime as dt
+    return dt.date.today()
+
+
 def _cong_thang(d, n: int):
     import calendar
     import datetime as dt
@@ -288,7 +306,14 @@ def _cong_thang(d, n: int):
     return dt.date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
 
 
-def doc_master(thu_muc) -> Dict[str, Dict]:
+def han_ap_dung(het, gh, ngay):
+    """Hạn hợp đồng đang áp dụng tại `ngay`: đã tới ngày gia hạn → ngày gia hạn + 12 tháng; chưa tới → ngày hết hạn."""
+    if gh and gh <= ngay:
+        return _cong_thang(gh, 12)
+    return het or (_cong_thang(gh, 12) if gh else None)
+
+
+def doc_master(thu_muc, ngay=None) -> Dict[str, Dict]:
     """{MÃ KH (hoa): {ten, term, so_hd, het_han, gia_han, han_dung, sales}} từ mọi bảng term trong sample/.
     Nhận cả file Client Master lẫn file nháp của KTT (tìm cột theo tên). File sửa sau thắng."""
     ra: Dict[str, Dict] = {}
@@ -306,6 +331,7 @@ def doc_master(thu_muc) -> Dict[str, Dict]:
         i_het = cot("ngày hết hạn", "expiry date")
         i_gh = cot("ngày gia hạn", "renewal date")
         i_sales = cot("sales phụ trách", "salesman")
+        i_co_hd = cot("đã có hợp đồng")
         g = lambda r, i: r[i] if i is not None and i < len(r) else None
         for r in hang[1:]:
             ma = ghep._o(g(r, i_ma)).upper()
@@ -313,8 +339,9 @@ def doc_master(thu_muc) -> Dict[str, Dict]:
                 continue
             het, gh = ghep._ngay(g(r, i_het)), ghep._ngay(g(r, i_gh))
             ra[ma] = dict(ten=ghep._o(g(r, i_ten)), term=ghep._o(g(r, i_term)), so_hd=ghep._o(g(r, i_hd)),
-                          het_han=het, gia_han=gh, han_dung=_cong_thang(gh, 12) if gh else het,
-                          sales=ghep._o(g(r, i_sales)))
+                          het_han=het, gia_han=gh, han_dung=han_ap_dung(het, gh, ngay or _hom_nay()),
+                          sales=ghep._o(g(r, i_sales)),
+                          co_hd=bool(ghep._o(g(r, i_co_hd))) if i_co_hd is not None else None)
     return ra
 
 

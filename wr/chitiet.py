@@ -94,14 +94,18 @@ class KhachChiTiet:
     def no_moi_trong_ky(self, tu: dt.date, den: dt.date) -> float:
         return round(sum(b.no for b in self.but_toan if tu <= b.ngay_ht <= den), 2)
 
-    def hoa_don_con_no(self, den: dt.date) -> Tuple[List[Tuple[dt.date, str, float]], float]:
+    def hoa_don_con_no(self, den: dt.date, da_tt=None) -> Tuple[List[Tuple[dt.date, str, float]], float]:
         """Tiền thu trừ vào hoá đơn thế nào:
           1. Phiếu thu có ghi số hoá đơn trong diễn giải ("theo HD 00001574, 00001419")
              → trừ thẳng vào đúng các hoá đơn đó (cũ trước), như kế toán đã gạch nợ.
-          2. Phần còn lại → trừ vào hoá đơn CŨ NHẤT trước.
+          2. Phần còn lại → trước hết trừ vào các hoá đơn Misa (Bán hàng) ghi "Đã thanh toán" tại ngày
+             cuối kỳ — da_tt = {(số HĐ, năm)} — vì kế toán đã đối trừ chúng trên Misa (FIN 17/10, STA
+             CENTER: HĐ 1560 Misa ghi đã TT); sau đó mới tới hoá đơn CŨ NHẤT trước.
         Trả về ([(ngày hoá đơn, số hoá đơn, còn nợ)], tiền thu chưa trừ hết)."""
+        da_tt = da_tt or set()
         hd: Dict[Tuple[dt.date, str], float] = {}
         thu: List[Tuple[float, List[int], dt.date]] = []
+        ty_gia: set = set()     # khoá của bút toán chênh lệch tỷ giá (NVK) làm tăng nợ
         for b in self.but_toan:
             if b.ngay_ht > den:
                 continue
@@ -112,6 +116,8 @@ class KhachChiTiet:
             giam = max(b.co, 0) + max(-b.no, 0)
             if tang:
                 hd[khoa] = hd.get(khoa, 0) + tang
+                if _so_hd(khoa[1]) is None and "tỷ giá" in (b.dien_giai or "").lower():
+                    ty_gia.add(khoa)
             if giam:
                 thu.append((giam, so_hd_nhac_toi(b.dien_giai), b.ngay_ht))
         con = {k: v for k, v in hd.items()}
@@ -120,6 +126,17 @@ class KhachChiTiet:
             n = _so_hd(k[1])
             if n is not None:
                 theo_so.setdefault(n, []).append(k)
+        # Chênh lệch tỷ giá khi đối trừ (NVK) cùng ngày với phiếu thu ghi số hoá đơn → thuộc hoá đơn đó
+        # (W42 OPTIMALOG: NVK.2026.04.0208 ngày 04/06 đi với phiếu thu "theo HD 579")
+        for k in sorted(ty_gia):
+            for _tien, nhac, ngay_thu in thu:
+                if ngay_thu != k[0] or not nhac:
+                    continue
+                dich = next((max((x for x in theo_so.get(n, []) if x[0] <= ngay_thu), default=None)
+                             for n in nhac if any(x[0] <= ngay_thu for x in theo_so.get(n, []))), None)
+                if dich:
+                    con[dich] = round(con[dich] + con.pop(k), 2)
+                    break
         du = 0.0
         for tien, nhac, ngay_thu in thu:
             for n in nhac:
@@ -134,12 +151,12 @@ class KhachChiTiet:
                     tien = round(tien - tru, 2)
             du += tien
         du = round(du, 2)
-        ra: List[Tuple[dt.date, str, float]] = []
-        for k in sorted(con):
+        uu_tien = lambda k: 0 if (_so_hd(k[1]), k[0].year) in da_tt else 1
+        for k in sorted(con, key=lambda k: (uu_tien(k), k)):
             tru = min(du, con[k])
             du = round(du - tru, 2)
-            if con[k] - tru > 0.5:
-                ra.append((k[0], k[1], round(con[k] - tru, 2)))
+            con[k] = round(con[k] - tru, 2)
+        ra = [(k[0], k[1], con[k]) for k in sorted(con) if con[k] > 0.5]
         return ra, du
 
 

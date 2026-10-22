@@ -119,6 +119,7 @@ CHI_SO = [
     ("khach_chua_term", "Customers owing without a credit term in Client Master", "so"),
     ("term_doi", "Credit terms changed since last week", "so"),
     ("khach_chua_han_hd", "Customers owing without contract expiry date", "so"),
+    ("khach_chua_hd", "Customers owing without a signed contract (Client Master ✓)", "so"),
 ]
 
 LICH_SU = [

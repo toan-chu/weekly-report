@@ -30,7 +30,16 @@ Chỉ huy:   claude   [COWORK-EXEC]
            biểu đồ, sheet Contracts; bỏ phiếu khách mới. W41 chạy lại: 58/66 khách
            dòng con y bản FIN sửa; 931 công thức, 0 lỗi, AR Risk khớp 66/66.
 
-## Hôm nay (13/10)
+   WR-09   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
+           Sửa theo FIN sau W42: phân bổ tiền thu theo trạng thái Misa, tỷ giá đi theo HĐ, tên công ty,
+           cột Đã có hợp đồng. 72 đạt + 20 bỏ qua.
+
+## Hôm nay (20/10)
+   FIN sau W42: STA CENTER HĐ 1560 sai (tiền thu không ghi số HĐ phân bổ sai), đổi tên công ty, Client
+   Master thêm cột Đã có hợp đồng. Làm WR-09; W42 chạy lại khớp bản human 64/68 dòng job, 4 khách còn
+   lại tool theo sổ — chờ FIN xác nhận.
+
+## Hôm 13/10
    Chairman: file credit term là file chung OneDrive (Sales + FIN cùng điền) → dựng Client Master List
    theo theme (82 khách, trạng thái hợp đồng tự tính 30/60/90 ngày). Dashboard: nhãn biểu đồ bỏ phần
    "CÔNG TY TNHH…" cho đọc được. ATH hẹn "tháng 9" mà sang tháng 10 vẫn N2 → Chairman chọn phương án A:

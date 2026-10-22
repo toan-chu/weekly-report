@@ -437,7 +437,7 @@ def danh_gia_rui_ro(r: DongRuiRo, ngay_chot: Optional[dt.date] = None) -> DongRu
 def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=None,
               pt: Optional[PhaiTra] = None, ngay_chot: Optional[dt.date] = None,
               job_no_cu: Optional[Dict[str, list]] = None, job_misa=None,
-              credit_terms: Optional[Dict[str, str]] = None) -> KetQuaFull:
+              credit_terms: Optional[Dict[str, str]] = None, ma_no_cu=None) -> KetQuaFull:
     # Ngày chốt (tên trang sổ ghi, "At dd Mon yyyy") = hôm sau ngày cuối kỳ, như file Tuổi nợ cũ.
     # Tuổi nợ tính tại ngày cuối kỳ: hoá đơn đến hạn đúng ngày đó vẫn là "Current".
     ngay_chot = ngay_chot or th.den_ngay + dt.timedelta(days=1)
@@ -490,8 +490,20 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
             d.lo = sg.lo_tu_nhom(d.nhom, tai_ngay)
             d.nguon, d.phan_nguon = "kho-doi", {"kho-doi": T}
             d.ly_do = d.ly_do or kho_doi.get(k.ma, "Khó đòi")
+            # W42 (FIN giữ dòng "HĐ 2519 nợ cũ" dưới Minh Khôi): khách khó đòi mà FIN đã khai hoá đơn ở bảng
+            # job nợ cũ thì vẫn liệt kê hoá đơn theo sổ, tất cả ở 120+; khó đòi chưa khai thì giữ một dòng
+            if kct and k.ma.upper() in (ma_no_cu or set()):
+                con_kd, _ = kct.hoa_don_con_no(tai_ngay)
+                if con_kd and abs(sum(t for *_x, t in con_kd) - T) < 1:
+                    d.hoa_don = [(n, s, sg.han_tu_term(n, term), t) for n, s, t in con_kd]
         else:
-            con, _ = kct.hoa_don_con_no(tai_ngay) if kct else ([], 0.0)
+            # FIN 17/10: tiền thu không ghi số HĐ trừ trước vào hoá đơn Misa đã ghi "Đã thanh toán"
+            da_tt = set()
+            if job_misa is not None:
+                for h in job_misa.theo_ma.get(k.ma, []):
+                    if h.ngay <= tai_ngay and not h.chua_tt_tai(tai_ngay) and str(h.so_hd).strip().isdigit():
+                        da_tt.add((int(h.so_hd), h.ngay.year))
+            con, _ = kct.hoa_don_con_no(tai_ngay, da_tt) if kct else ([], 0.0)
             # mỗi hoá đơn: [ngày HĐ, số HĐ, hạn, còn nợ] — giữ lại cho sheet Invoices
             hd = [[n, so_hd, sg.han_tu_term(n, term), t] for n, so_hd, t in con]
             S = round(sum(x[3] for x in hd), 2)
@@ -533,6 +545,9 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
             if d.hoa_don:
                 _dong_con_theo_so(d, job_misa, k.ma, (job_no_cu or {}).get(k.ma.upper(), []), sales_job,
                                   tr.salesman if tr else "", tai_ngay)
+                if d.nguon == "kho-doi":
+                    for g in d.dong_con:
+                        g["nhom_co_dinh"] = [0.0] * 5 + [g["tien"]]
             else:                             # khó đòi / ngoại lệ: không có hoá đơn theo sổ
                 _dong_con_misa(d, misa_chua, term, tai_ngay, sales_job, tr.salesman if tr else "")
             for h in job_misa.theo_ma.get(k.ma, []):
@@ -604,7 +619,7 @@ def tinh_full(th: TongHop, ct: ctm.ChiTiet, so: sg.SoGhi, dong_sms=None, bang=No
                 d.doi_chieu["goi_y"] = (f"Tổng job khớp Chi tiết 131 ({du_ct:,.0f}); chỉ file Tổng hợp 131 ghi "
                                         f"{T:,.0f}: hai file xuất khác lúc, Misa đã sửa hoá đơn ở giữa. "
                                         "Xuất lại cả 6 file cùng lúc là khớp.")
-            if d.nguon == "kho-doi" and d.doi_chieu["mau"] == "cam" and not d.dong_con:
+            if d.nguon == "kho-doi" and d.doi_chieu["mau"] == "cam":
                 d.doi_chieu.update(mau="kho_doi", goi_y="Nợ khó đòi FIN đã khai ở sample/: không cần job.")
         elif d.dong_con and abs(con_lai) >= 1:
             d.can_doi = con_lai

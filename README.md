@@ -6,7 +6,7 @@
 
 [![Trustana](https://img.shields.io/badge/TRUSTANA-4d148c?style=for-the-badge&logoColor=white)](#)
 [![Phiên bản](https://img.shields.io/badge/phiên%20bản-0.6-ff6200?style=for-the-badge)](#)
-[![Phép thử](https://img.shields.io/badge/phép%20thử-89-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
+[![Phép thử](https://img.shields.io/badge/phép%20thử-92-2ea043?style=for-the-badge)](#-dành-cho-người-bảo-trì)
 [![Python](https://img.shields.io/badge/Python-3.9%2B-4d148c?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](#)
 
@@ -137,7 +137,9 @@ Misa), và tên khách trên file Bán hàng không tìm thấy trên Misa (TÍM
 
 ```
 Tuổi nợ   = hạn của từng hoá đơn (ngày hoá đơn + credit term), quá hạn tính từ HÔM SAU ngày đến hạn
-Tiền thu  = phiếu thu ghi số hoá đơn thì trừ đúng hoá đơn đó; còn lại trừ hoá đơn cũ nhất trước
+Tiền thu  = phiếu thu ghi số hoá đơn thì trừ đúng hoá đơn đó; còn lại trừ trước vào hoá đơn Misa đã ghi
+            "Đã thanh toán", rồi mới tới hoá đơn cũ nhất. Chênh lệch tỷ giá khi đối trừ đi theo hoá đơn của
+            phiếu thu cùng ngày
 Khó đòi   = luôn ở nhóm 120+
 Tiền      = luôn theo file Tổng hợp; file Chi tiết lệch thì ghi ở Review
 Job       = mỗi hoá đơn còn nợ theo sổ; tiền = số CÒN NỢ của hoá đơn (đã trừ phiếu thu), hoá đơn nhiều
@@ -159,10 +161,11 @@ hạn từng hoá đơn và báo hợp đồng sắp hết hạn.
 | Mã kh | **FIN** | Mã khách **đúng như trên Misa** (VD `KH00418`, `INTERFREIGHT`). Sai mã là tool không nhận |
 | Khách hàng, Sales phụ trách, PIC, Mã số thuế | Sales | Sales ghi tên đầy đủ như trên SMS; nhiều Sales thì cách nhau dấu phẩy |
 | Tài khoản ngân hàng (4 cột) | Sales / FIN | Không bắt buộc |
+| **Đã có hợp đồng** | Sales | Bấm mũi tên trong ô, chọn **✓** nếu khách đã ký hợp đồng; chưa có thì để trống |
 | Số hợp đồng, Loại hợp đồng | Sales | Chọn trong danh sách hoặc gõ |
 | **Thời hạn** | Sales điền, **FIN xác nhận** | Cột tool dùng để tính quá hạn — cách ghi ở bảng dưới |
 | Ngày hiệu lực, Ngày hết hạn | Sales | Gõ ngày dạng `dd/mm/yyyy` |
-| Ngày gia hạn | Sales | Khi ký gia hạn; file tự cộng 12 tháng ra hạn mới |
+| Ngày gia hạn | Sales | Ngày hợp đồng được gia hạn. **Tới ngày đó** file mới cộng 12 tháng ra hạn mới; chưa tới thì hạn vẫn là Ngày hết hạn |
 | Cột nền xám | — | Tự tính (STT, hạn đang áp dụng, còn lại bao nhiêu ngày, trạng thái). **Đừng gõ đè** |
 
 **Cách ghi cột Thời hạn** — tool đọc được các kiểu sau:
@@ -310,14 +313,14 @@ weekly-report/            chỉ chứa mã nguồn, không có dữ liệu chạ
 ├── runner.py             điểm chạy, cũng là chỗ nhận mọi lệnh
 ├── wr/                   misa · chitiet · banhang · tindung · ghifull · ghep · khachhang · soghi · tinhtoan · baocao · kiemtra
 ├── tools/                make_template · setup_wizard
-├── tests/                89 phép thử (20 cần dữ liệu thật trong handoff/docs/fixtures/)
+├── tests/                92 phép thử (20 cần dữ liệu thật trong handoff/docs/fixtures/)
 ├── dashboard/            src + build.py → Credit_Dashboard.html (tool chép vào workspace)
 ├── template/             mẫu chuẩn sheet Receivables
 └── handoff/              RULES · STATE · MAP · phiếu việc · tài liệu
 ```
 
 ```bat
-python -m pytest                       :: 89 phép thử
+python -m pytest                       :: 92 phép thử
 python runner.py --tong-hop A.xlsx --chi-tiet B.xlsx --phai-tra C.xlsx --sms D.xlsx ^
                  --ban-hang E.xlsx --so-chi-tiet F.xlsx --ra <thư mục>
 python dashboard/build.py              :: sửa dashboard/src thì dựng lại rồi commit cả file html
@@ -325,7 +328,16 @@ python dashboard/build.py              :: sửa dashboard/src thì dựng lại 
 
 📐 Kiến trúc: `handoff/MAP.md` · Luật phối hợp: `handoff/RULES.md` — đọc trước khi sửa
 
-### 🆕 Có gì mới ở v0.6 (13/10/2026) — WR-08
+### 🆕 v0.6.1 (20/10/2026) — WR-09, sửa theo FIN sau tuần 42
+
+- Tiền thu không ghi số hoá đơn trừ trước vào hoá đơn Misa đã ghi "Đã thanh toán" (STA CENTER: hết dòng HĐ 1560 ma).
+- Chênh lệch tỷ giá khi đối trừ gộp vào hoá đơn của phiếu thu cùng ngày, không thành dòng riêng.
+- Khách khó đòi có tên trong bảng job nợ cũ vẫn hiện dòng hoá đơn (Minh Khôi HĐ 2519).
+- Tên công ty: TRUSTANA VIETNAM COMPANY LIMITED.
+- Client Master thêm cột **Đã có hợp đồng** (✓); Summary đếm khách đang nợ chưa có hợp đồng. Ngày gia hạn chỉ tính khi đã tới.
+- `python tools/nang_cap_client_master.py "<file>"`: đưa file Client Master đang dùng lên mẫu mới, giữ nguyên dữ liệu.
+
+### 🆕 v0.6 (13/10/2026) — WR-08
 
 - **Tiền của từng job = số còn nợ theo sổ** (đã trừ phiếu thu); dòng job luôn cộng bằng Total. W41: 58/66 khách y hệt bản FIN sửa tay.
 - **AR Risk dùng công thức của chị KTT** (S1–S6, nhóm, xu hướng, việc cần làm); TOTAL ở Receivables là công thức.

@@ -10,7 +10,7 @@ DO_CANH_BAO = "FCE4E4"
 
 # Chữ trên báo cáo — báo cáo có lúc gửi đối tác nước ngoài nên để tiếng Anh.
 # Sửa chữ ở đây là đủ, tool ghi lại các dòng này mỗi lần chạy.
-CONG_TY = "TRUSTANA VIETNAM"
+CONG_TY = "TRUSTANA VIETNAM COMPANY LIMITED"
 TEN_BAO_CAO = "Overdue Debtors Reports"
 TEN_BANG = "Accounts receivables"
 SHEET_BANG = "Receivables"

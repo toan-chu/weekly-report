@@ -349,6 +349,26 @@ def doc_job_no_cu(thu_muc) -> Dict[str, List[Tuple[int, str, str]]]:
     return ra
 
 
+def ma_job_no_cu(thu_muc) -> Set[str]:
+    """Mã khách có dòng trong bảng job nợ cũ (kể cả dòng FIN chưa điền Job/Sales)."""
+    ra: Set[str] = set()
+    if not thu_muc or not Path(thu_muc).is_dir():
+        return ra
+    for f in Path(thu_muc).glob("*.xlsx"):
+        if f.name.startswith(("~$", "KIEM_TRA")):
+            continue
+        try:
+            wb = openpyxl.load_workbook(f, read_only=True, data_only=True)
+        except Exception:
+            continue
+        if SHEET_JOB_NO_CU in wb.sheetnames:
+            for r in list(wb[SHEET_JOB_NO_CU].iter_rows(min_row=2, values_only=True)):
+                if r and _k(r[0]):
+                    ra.add(_k(r[0]))
+        wb.close()
+    return ra
+
+
 # --- WR-08: credit term theo từng khách — FIN giữ một bảng trong sample/ (Head of FIN 12/10) ------------
 
 SHEET_CREDIT_TERM = "Credit term"

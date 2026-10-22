@@ -89,6 +89,10 @@ Chia theo đường lấy bằng chứng, không theo vai.
 - (13/10) Client Master là file chung trên OneDrive. Trong `sample/` thì không cần cài gì; nằm chỗ khác
   thì mỗi máy khai đường dẫn (`--client-master`, lưu `client_master_theo_may` trong settings.json, không
   đi theo git). Có file chung → chỉ đọc file đó. Không thấy file → dùng `sample/` + cảnh báo ở Review.
+- (20/10, FIN W42) Tiền thu không ghi số HĐ: trừ trước vào HĐ Misa (Bán hàng) ghi "Đã thanh toán" tại ngày chốt,
+  rồi mới FIFO. Chênh lệch tỷ giá (NVK) cùng ngày với phiếu thu ghi số HĐ → cộng vào HĐ đó.
+- (20/10) Client Master có cột "Đã có hợp đồng" (✓). Ngày gia hạn chỉ có hiệu lực khi đã tới ngày đó.
+  Đổi mẫu thì nâng cấp file đang dùng bằng `tools/nang_cap_client_master.py`, không dựng lại từ đầu.
 - (13/10, Chairman chọn A) S7 lỡ hẹn: lý do có ngày/tháng hẹn trả ('15/9', 'tháng 9' = cuối tháng,
   'đầu tháng' = ngày 10, 'giữa tháng' = ngày 20) đã qua ngày chốt mà quá hạn không giảm so với tuần
   trước → tính như S1–S3 (2 dấu hiệu = N3). Cột Promise date tool điền từ lý do, FIN sửa tay được.
