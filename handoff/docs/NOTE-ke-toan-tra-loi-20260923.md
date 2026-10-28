@@ -1,6 +1,6 @@
 # NOTE — Kế toán trả lời đợt 2, 2026-09-23
 
-Người trả lời: kế toán phụ trách công nợ. Hỏi qua Chairman.
+Người trả lời: kế toán phụ trách công nợ. Hỏi qua user.
 
 ## 1. Ba khách Misa báo quá hạn nhưng bản tay để Current
 

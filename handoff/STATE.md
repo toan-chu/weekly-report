@@ -1,98 +1,47 @@
-Cập nhật:  2026-10-13 UTC+7 — bởi claude-logisticist
-Chỉ huy:   claude   [COWORK-EXEC]
+Cập nhật: 2026-10-28 10:55 UTC+7 - bởi claude
 
 ## Việc đang mở
-   WR-04   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Full credit report: 4 file → Summary, Receivables, AR Risk, Payable, Cash Flow,
-           Methodology, Review. 44 phép thử đạt. W40 thật: 61/70 khớp bản người, 97,8% tiền
-           đúng nhóm. Chờ Chairman chạy trên máy mình rồi máy FIN.
+WR-12 - người làm claude - chờ-soát - vòng 1/2 - khách mới tự vào file credit term, ô Mở hợp đồng, khoá tuần đã chốt, đổi tên gọi
+WR-11 - người làm claude - chờ-soát - vòng 1/2 - màu tuổi nợ (CEO), Client Master thêm cột, PA1 lý do, khách mới; sửa lỗi WR-09
+WR-10 - người làm claude - chờ-soát - vòng 1/2 - đưa repo về handoff-standard v2.0
+WR-09 - người làm claude - chờ-soát - vòng 1/2 - sửa theo FIN sau W42; 5/6 lỗi tự soi đã sửa ở WR-11
+WR-08 - người làm claude - chờ-soát - vòng 1/2 - công thức KTT, Client Master, sheet Contracts
+WR-07 - người làm claude - chờ-soát - vòng 1/2 - dashboard nhiều trang, chạy ẩn
+WR-06 - người làm claude - chờ-soát - vòng 1/2 - job từ Misa, cột Đối chiếu
+WR-05 - người làm claude - chờ-soát - vòng 1/2 - dòng con job/Sales, dashboard HTML
+WR-04 - người làm claude - chờ-soát - vòng 1/2 - full credit report
+WR-03 - người làm claude - chờ-soát - vòng 0/2 - SMS AR-AP, ghép khách, bản final
+WR-02 - người làm claude - chờ-đề-bài - vòng 0/2 - so bản tay trên cùng bộ file Misa
+WR-01 - người làm claude - chờ-soát - vòng 1/2 - dựng tool báo cáo tuần
 
-   WR-03   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 0/2
-           Logic SMS + bản final; phần tuổi nợ đã được WR-04 thay. Còn 3 dòng Windows chờ ký.
-
-   WR-02   giao cho chairman   chờ-đề-bài   — có thể đóng huỷ, WR-04 đã so bản người.
-   WR-01   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2 — 3 dòng Windows chờ ký.
-
-   WR-05   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Excel có dòng con job/Sales, sheet Invoices, trang bìa; Credit_Dashboard.html ở gốc
-           workspace (kéo báo cáo vào, In / Lưu PDF). 48 phép thử đạt.
-
-   WR-06   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Job chưa thanh toán từ Misa (Bán hàng + Sổ chi tiết 131) + cột Đối chiếu tô màu.
-           55 phép thử đạt. W40: 57 khớp, 6 đỏ, 2 cam, 5 khó đòi. Workspace test đã để sẵn 6 file.
-
-   WR-07   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Dashboard nhiều trang + bấm xuyên (khách, Sales); lịch chạy nền không bật CMD.
-
-   WR-08   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Dòng con theo số còn nợ của sổ, công thức AR Risk của KTT, credit term từ file KTT,
-           phiếu khách mới, cột Jobs by Salesman. 69 đạt + 20 bỏ qua; 13/10 thêm Client Master List (đọc thẳng file OneDrive), S7 lỡ hẹn, tên ngắn trên
-           biểu đồ, sheet Contracts; bỏ phiếu khách mới. W41 chạy lại: 58/66 khách
-           dòng con y bản FIN sửa; 931 công thức, 0 lỗi, AR Risk khớp 66/66.
-
-   WR-09   giao cho claude-logisticist   chờ-nghiệm-thu   vòng 1/2
-           Sửa theo FIN sau W42: phân bổ tiền thu theo trạng thái Misa, tỷ giá đi theo HĐ, tên công ty,
-           cột Đã có hợp đồng. 72 đạt + 20 bỏ qua.
-
-## Hôm nay (20/10)
-   FIN sau W42: STA CENTER HĐ 1560 sai (tiền thu không ghi số HĐ phân bổ sai), đổi tên công ty, Client
-   Master thêm cột Đã có hợp đồng. Làm WR-09; W42 chạy lại khớp bản human 64/68 dòng job, 4 khách còn
-   lại tool theo sổ — chờ FIN xác nhận.
-
-## Hôm 13/10
-   Chairman: file credit term là file chung OneDrive (Sales + FIN cùng điền) → dựng Client Master List
-   theo theme (82 khách, trạng thái hợp đồng tự tính 30/60/90 ngày). Dashboard: nhãn biểu đồ bỏ phần
-   "CÔNG TY TNHH…" cho đọc được. ATH hẹn "tháng 9" mà sang tháng 10 vẫn N2 → Chairman chọn phương án A:
-   thêm S7 lỡ hẹn, đếm như S1–S3. Chạy lại W41: ATH lên N3; nợ xấu 1,73 → 1,85 tỷ (16 khách);
-   LibreOffice tính lại 0 lỗi, nợ xấu theo công thức = số tool.
-   KTT chốt: N3 chỉ là câu nhắc (FIN tự quyết ngưng); FIN sửa cuối Client Master; HĐ hết hạn tính theo
-   term cũ. Làm sheet Contracts + Summary + ô dashboard. W41: 2 HĐ hết hạn còn nợ (V.KAUS, DPX),
-   1 sắp hết hạn (PRO LOG 16/11), 22 khách nợ chưa có term, 63 khách nợ chưa có ngày hết hạn HĐ.
-
-## Hôm 12/10
-   KTT gửi bản W40 có công thức + credit-term-draft; CX hỏi 4 câu (AR Risk đúng chưa, Sales ghi
-   lý do ở đâu, ai duyệt ngưng dịch vụ, Inter-Freight 2 Sales). Làm WR-08, chạy lại W41 ở
-   workspace test, so bản "(human)" FIN sửa.
-
-## Hôm nay (09/10)
-   FIN thêm 2 file xuất từ đầu năm; luật "chỉ Đã thanh toán mới là đã trả"; cần lệnh báo lệch.
-   Làm WR-06. Chairman mở được dashboard trên Windows. Sửa file ghép khách test: TTND VIETNGA
-   → KH00416, KH00361 (lô tàu chìm) = không có SMS. Chiều: làm WR-07 (dashboard nhiều trang, chạy ẩn). FIN audit WR-06 xong, đồng ý. FIN chốt
-   Payable = y chang mẫu, chỉ số tổng, không tô đỏ. Đã giả lập máy FIN với gói sample_w40: chạy sạch.
-
-## Hôm nay (08/10, chiều)
-   Chairman chạy WR-04 trên Windows: đúng số. CEO chốt tên Sales đầy đủ. Thêm lý do tự động
-   "[TỰ ĐỘNG]". Làm WR-05: dòng con job trong Excel, sheet Invoices, dashboard HTML.
-
-## Hôm nay (08/10, sáng)
-   FIN chốt: Chi tiết 131 xuất từ 01/01/2022 mỗi tuần; quá hạn tính từ hôm sau ngày đến hạn;
-   Payable = toàn bộ Misa (bản 114 vendor lệch vì hoá đơn nhập sau). Dựng WR-04. Bỏ nút
-   3_Chay_ngay. Đổi tên file trong handoff/docs/new theo nhóm 1_INPUT / 2_SAMPLE /
-   3_DOI-CHIEU / 4_CU; .gitignore chặn mọi xlsx dưới handoff/docs.
-
-## Hôm 06/10
-   WR-03: thêm SMS AR-AP, file ghép khách, bản final làm trí nhớ nợ cũ; 3 nút .bat.
+## Hôm qua
+- 20/10: WR-09 sửa theo FIN sau W42; chạy lại W42 khớp bản human 64/68 dòng job, 4 khách tool theo sổ, chờ FIN xác nhận.
+- 22/10: commit WR-09 (5aff24e).
+- 27/10: người làm tự soi lại WR-09, thấy 2 lỗi đếm "khách chưa có hợp đồng", Methodology chưa sửa, script nâng cấp Client Master bỏ cột lạ. Chưa sửa mã.
+- 27/10: WR-10 đưa repo từ chuẩn v1.1 lên v2.0; mọi phiếu chuyển sang khuôn mới, chờ codex soát.
+- 28/10: WR-12 bổ sung: file credit term tự lên mẫu mới mỗi lần chạy kể cả không có khách mới; README cho FIN; 87 phép thử đạt. Chờ user commit + triển khai máy FIN (GitHub Desktop Pull).
+- 27/10: WR-12 (v0.7.1): khách mới tự vào file credit term (W43 thật: 5 khách, 83 dòng cũ giữ nguyên), ô Mở hợp đồng, khoá tuần đã chốt; 85 phép thử đạt. Tên gọi: file credit term; Client Master = SharePoint List sau này.
+- 27/10: WR-11 (v0.7) xong, 81 phép thử đạt; chạy lại W43 thật trong máy ảo: tổng y bản cũ, màu gốc khớp bản Head FIN 61/61. Kịch bản chạy lại W43 trên máy FIN: dùng bản trong WR-12 (thay WR-11).
 
 ## Vừa đóng
-   chưa có
+chưa có
 
-## Đang treo, cần Chairman
-   1. Chairman: commit WR-08; cài máy FIN kèm .gitattributes; đưa Client Master lên OneDrive và cho
-      máy FIN đồng bộ file về máy (tool đọc bản trên máy). Xoá handoff/shots/_tmp (ảnh kiểm tra).
-   2. Sales điền ngày hết hạn hợp đồng (63 khách đang nợ còn trống), FIN điền term cho 22 khách đang nợ.
-   3. Chairman nghiệm thu WR-08 trên máy mình rồi máy FIN [RUNTIME CHƯA KIỂM].
+## Đang treo, cần user
+0. Kỳ vọng (WR-11): với W43 thật, 58/61 khách bị nâng 1 màu (42 khách chưa ✓ hợp đồng, 26 khách ≥ 2 hoá đơn trả trễ / 6 tháng). Head FIN chốt X, Y, N (N = 2 có thể quá thấp với khách đi hàng nhiều)? Giữ 5 màu hay gộp còn 3 như CEO gợi ý?
+1. Kỳ vọng: WR-02 (kế toán làm tay trên đúng bộ file tool đã chạy rồi so) còn cần không? WR-04 → WR-09 đã so W40–W42 với bản human. Không cần thì đóng-huỷ.
+2. Kỳ vọng: "Ngày gia hạn chỉ có hiệu lực khi đã tới ngày đó" (thêm ở WR-09, luật R.2) có đúng ý không? Nếu Sales gia hạn sớm thì hạn mới tính từ ngày gia hạn hay từ ngày hết hạn cũ?
+3. Đề xuất luật cho RULES (bẫy sống quá một tuần):
+   a. Không được ghép phiếu thu với hoá đơn đầu tiên mang số đó; phải chọn hoá đơn cùng số gần nhất trước ngày thu (Misa đánh số lại mỗi năm).
+   b. Không được tin tên file Misa (Windows thêm hậu tố (21), (22)); phải đọc ngày bên trong file.
+   c. Không được so khớp khách giữa các file Misa theo mã; phải so theo tên đã chuẩn hoá.
+   d. Gộp hai câu ở R.2 về thứ tự trừ tiền thu: câu v0.4 "còn lại trừ hoá đơn cũ nhất trước" nay đã bị câu 20/10 (ưu tiên hoá đơn Misa "Đã thanh toán") thay một phần.
+4. Luật bị thay khi sinh lại RULES từ v2.0 (xem AUDIT WR-10): mục 1 cũ "Chỉ huy" và giải trừ giới hạn; mục 2 cũ quyền ký nghiệm thu theo vai; mục 3 cũ trần vòng lặp (nay A3); mục 4 cũ "Bốn câu hỏi kiểm tra của user" (nay A10).
 
 ## Bẫy đã biết
-   - Số hoá đơn Misa đánh lại từ đầu mỗi năm: ghép phiếu thu theo số HĐ phải chọn HĐ
-     gần nhất trước ngày thu, không lấy HĐ đầu tiên mang số đó.
-   - File Tổng hợp và Chi tiết xuất khác giờ thì số dư lệch (W40: Thủy Ngân 308tr, GOLDEN
-     GLOBE 2,7tr). Tiền theo Tổng hợp; Review liệt kê.
-   - Hoá đơn nhập lùi ngày làm dư đầu kỳ Misa khác dư cuối báo cáo tuần trước: cột
-     "Backdated vs last report" ở AR Risk và Payable.
-   - File Misa tải về bị Windows thêm hậu tố (21), (22): luôn đọc ngày trong file.
-   - Mã khách khác nhau giữa các file Misa nên so khớp theo TÊN đã chuẩn hoá.
-   - Trạng thái thanh toán trên file Bán hàng là tại lúc xuất, không phải ngày cuối kỳ (WR-06).
-   - Excel thật mới tính công thức; openpyxl không lưu giá trị — báo cáo ghi số, không công thức.
+- Hoá đơn nhập lùi ngày làm dư đầu kỳ Misa khác dư cuối báo cáo tuần trước: xem cột "Backdated vs last report" ở AR Risk và Payable.
+- File Tổng hợp và Chi tiết xuất khác giờ thì số dư lệch (W40: Thủy Ngân 308tr); tiền theo Tổng hợp, Review liệt kê.
+- File Excel thật trong `handoff/docs/` và `handoff/archive/` bị .gitignore chặn: máy khác không có, phải chép tay.
+- Phép thử: 20 phép thử bỏ qua khi thiếu dữ liệu thật trong `tests/fixtures/`; máy ảo Linux cần `pip install --user pytest openpyxl` trước. `tests/conftest.py` hạ ngưỡng số lẻ xuống 0,5đ — phép thử cần ngưỡng thật phải tự đặt lại.
 
 ## Báo lỗi giả
-   Tháng này: 0
+Tháng này: 0

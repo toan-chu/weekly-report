@@ -1,18 +1,21 @@
-Mã:         WR-01
-Mạch:       WR — báo cáo công nợ phải thu hằng tuần
-Nối tiếp:   (phiếu đầu mạch)
-Giao cho:   claude-logisticist   [COWORK-EXEC]
-Trạng thái: chờ-nghiệm-thu
-Vòng:       1/2
+Mã: WR-01
+Mạch: WR - báo cáo công nợ phải thu hằng tuần
+Nối tiếp: 
+Người làm: claude
+Người soát: codex
+Trạng thái: chờ-soát
+Vòng: 1/2
 
 ## ĐỀ BÀI
 
-**Mục tiêu nghiệp vụ**
+Kỳ vọng của user:
 Kế toán không còn phải làm báo cáo công nợ tuần bằng tay. Việc duy nhất còn lại
 của con người là thả 2 file Excel xuất từ Misa vào một thư mục OneDrive. File
 báo cáo tuần theo mẫu chuẩn tự xuất hiện, đúng số, đúng mẫu, đúng hạn.
 
-**Ngoài phạm vi**
+Mục tiêu: Dựng tool đọc file Misa và tự ghi báo cáo công nợ tuần theo mẫu chuẩn, chạy nền theo lịch, kế toán chỉ việc thả file.
+
+Ngoài phạm vi:
 - Chỉ làm sheet Receivable. Các sheet Payable, General, Dashboard,
   Hard-to-collect giữ nguyên như mẫu, chưa đụng tới.
 - Cột Salesman và số job chưa lấy tự động từ SMS; mang từ báo cáo tuần trước sang.
@@ -20,20 +23,20 @@ báo cáo tuần theo mẫu chuẩn tự xuất hiện, đúng số, đúng mẫ
 - Không đụng tới cách kế toán xuất file ra khỏi Misa.
 - Gửi báo cáo qua Teams hoặc email thuộc phase sau.
 
-**Kế thừa**
+Kế thừa:
 - Phiếu đầu mạch.
 - Luật điền báo cáo đã chốt với kế toán: `handoff/docs/SPEC-logic-bao-cao-tuan.md`.
 - Kết quả chạy thử luật đó trên 3 tuần dữ liệu thật:
   `handoff/docs/NOTE-doi-chieu-3-tuan.md`.
 
-**Kịch bản nghiệm thu** — Chairman viết ngày 2026-09-23
+Kịch bản test: — user viết ngày 2026-09-23
 
-Chairman đặt 2 file Misa của tuần W37 vào thư mục đầu vào trên máy Chairman
-(đường dẫn Chairman trỏ lúc chạy):
+user đặt 2 file Misa của tuần W37 vào thư mục đầu vào trên máy user
+(đường dẫn user trỏ lúc chạy):
 - `W37_Tong_hop_cong_no_phai_thu_khach_hang.xlsx` — kỳ 05/09 đến 11/09/2026
 - `W37_Phan_tich_cong_no_phai_thu_theo_tuoi_no.xlsx` — đến ngày 12/09/2026
 
-Chairman chạy tool Python. Kỳ vọng thấy, trong vòng 2 phút:
+user chạy tool Python. Kỳ vọng thấy, trong vòng 2 phút:
 
 1. Thư mục kết quả xuất hiện đúng 1 file, tên `2026_W37_Bang_cong_no_tuan_05.09-11.09.2026.xlsx`.
 2. Mở ra, sheet Receivable đúng mẫu chuẩn: 14 cột, tiêu đề cột tên nền cam
@@ -47,7 +50,7 @@ Tuyệt đối không được xảy ra:
 
 - Ra file khi hai file đầu vào lệch kỳ.
 - Một dòng có tổng các cột tuổi nợ khác cột Total của chính dòng đó.
-- Sửa, đổi tên hay xoá mất file đầu vào của Chairman.
+- Sửa, đổi tên hay xoá mất file đầu vào của user.
 - Tiếng Việt vỡ chữ khi mở bằng Excel trên Windows.
 
 Đối chiếu tham khảo, KHÔNG phải điều kiện đạt: so file máy sinh với bản kế toán
@@ -65,11 +68,12 @@ giải thích được thuộc dạng nào trong `handoff/docs/NOTE-doi-chieu-3-
 - [x] Phép thử tự động trên fixtures W36 và W37
 - [x] Chạy kịch bản nghiệm thu W37, dán lệnh và kết quả vào AUDIT
 - [x] Cho người dùng tự trỏ thư mục đích, tool tạo đủ các ngăn bên trong
-- [ ] setup.bat: nháy đúp là cài thư viện + tạo lịch chạy nền  [RUNTIME CHƯA KIỂM]
+- [ ] setup.bat: nháy đúp là cài thư viện + tạo lịch chạy nền  [RUNTIME UNVERIFIED]
 
 ## AUDIT
 
-### Báo cáo của bên làm — claude-logisticist, 2026-09-23
+Báo cáo của người làm:
+### Báo cáo của người làm — claude, 2026-09-23
 
 **Đã làm gì.** Dựng tool từ đầu: đọc 2 file Misa, sổ ghi theo lô nợ có hạn,
 luật chia 6 nhóm tuổi, ghi file theo mẫu chuẩn, wizard cài đặt, 13 phép thử.
@@ -96,7 +100,7 @@ $ python3 -m pytest -q tests/test_wr.py
 13 passed, 6 warnings in 11.13s
 ```
 
-2. Câu 3 của Chairman — làm hỏng thử, phép thử có đỏ lên không
+2. Câu 3 của user — làm hỏng thử, phép thử có đỏ lên không
 
 ```
 $ sed -i 's|total=round(total, 2),|total=round(total * 1.01, 2),|' wr/tinhtoan.py
@@ -109,7 +113,7 @@ FAILED tests/test_wr.py::test_hai_file_lech_ky_thi_dung - Failed: DID NOT RAISE
 1 failed, 12 passed          <- đỏ đúng chỗ, đã hoàn nguyên
 ```
 
-3. Kịch bản nghiệm thu — thả 2 file W37 vào thư mục đầu vào rồi chạy tool
+3. Kịch bản test — thả 2 file W37 vào thư mục đầu vào rồi chạy tool
 
 ```
 $ python3 runner.py --nap-bao-cao ".../2026_W36_....xlsx" --ngay-chot 2026-09-05
@@ -189,7 +193,7 @@ Kế toán đã xác nhận số Misa đúng (khoản 1 tỷ được ghi nhận
 
 **Lệch so với đề bài.** Không.
 
-**Câu hỏi còn treo cho Chairman**
+**Câu hỏi còn treo cho user**
 1. ~~OPTEC, GRAND, AHC~~ — kế toán đã trả lời 23/09: Optec và Grand theo Misa;
    AHC khai ngoại lệ về Current vì đang chờ ký biên bản bù trừ. Grand đổi credit
    term sang 15 ngày. Xem `handoff/docs/NOTE-ke-toan-tra-loi-20260923.md`.
@@ -199,7 +203,7 @@ Kế toán đã xác nhận số Misa đúng (khoản 1 tỷ được ghi nhận
    đang làm đúng vậy.
 4. Máy nào chạy lịch nền, mấy giờ. Hiện wizard đặt 30 phút quét một lần.
 
-### Giả định kỹ thuật
+Giả định kỹ thuật:
 
 `[GIẢ ĐỊNH KỸ THUẬT]` Nạp trạng thái ban đầu từ một bảng đã chia sẵn nhóm tuổi
 thì lấy giữa khoảng của nhóm làm hạn thanh toán giả định (Current = ngày chốt
@@ -261,11 +265,11 @@ Thêm 2 phép thử canh khối đối chiếu này. Tổng 19 phép thử.
 
 ### Bổ sung 2026-09-24 — thả 3 tuần cũ vào mà không ra file
 
-Chairman thả 6 file của W33, W34, W35 vào `01_Input` rồi bấm Run, không có gì
+user thả 6 file của W33, W34, W35 vào `01_Input` rồi bấm Run, không có gì
 xảy ra. Hai nguyên nhân, cả hai đều là lỗi của tôi:
 
 1. Hôm 23/09 dọn thư mục mã nguồn, tôi xoá luôn `settings.json` của máy
-   Chairman. Tool mất đường dẫn thư mục đích nên thoát ngay, mà lại thoát bằng
+   user. Tool mất đường dẫn thư mục đích nên thoát ngay, mà lại thoát bằng
    `SystemExit` không ghi nhật ký, nên chạy nền thì im ru. Đã sửa: thoát kiểu
    nào cũng ghi một dòng vào nhật ký, và luật cấm xoá `settings.json` đã lên
    RULES.md mục 5.3a.
@@ -292,7 +296,7 @@ gom thành một dòng tổng kết ở cuối sheet Cần xem lại.
 
 ### Bổ sung 2026-09-24 (2) — chạy được ở máy nào, đặt ở đâu cũng được
 
-Chairman yêu cầu bảo đảm hai chỗ tách bạch: nơi chứa mã nguồn (máy local) và
+user yêu cầu bảo đảm hai chỗ tách bạch: nơi chứa mã nguồn (máy local) và
 thư mục đích (OneDrive), cả hai đặt ở đâu cũng chạy. Đã rà và sửa:
 
 | Chỗ dễ vỡ | Trước | Nay |
@@ -310,7 +314,7 @@ cùng file cấu hình, file kết quả bị khoá. Tổng 25 phép thử.
 
 ### Bổ sung 2026-09-24 (3) — đối chiếu 3 tuần W33-W35 kế toán làm tay
 
-Chairman đặt 3 bản kế toán làm tay vào `03_BanTay`.
+user đặt 3 bản kế toán làm tay vào `03_BanTay`.
 
 | | Chạy thẳng (sổ ghi rỗng) | Nối từ bản tay tuần trước |
 |---|---|---|
@@ -349,12 +353,12 @@ Luật mới lên RULES.md 5.2c. 27 phép thử.
 **Ảnh hưởng tới kịch bản nghiệm thu.** Phép so "máy với bản tay" chỉ có giá trị
 khi cả hai dùng cùng một cặp file Misa. Ba tuần W33-W35 không thoả điều kiện
 đó, nên con số 60/72 và 47/68 là sàn dưới, không phải mức chính xác thật của
-tool. Đề nghị Chairman: tuần tới kế toán làm tay TRÊN ĐÚNG cặp file đã thả vào
+tool. Đề nghị user: tuần tới kế toán làm tay TRÊN ĐÚNG cặp file đã thả vào
 01_Input, rồi mới so.
 
 ### Bổ sung 2026-09-24 (5) — dọn nhà, đổi nhịp, lên git
 
-- Nhịp chạy nền: 30 phút thành **15 phút**. Đo thực tế trên máy Chairman: lần
+- Nhịp chạy nền: 30 phút thành **15 phút**. Đo thực tế trên máy user: lần
   quét rỗng 0,41 giây, lần chạy thật 1,31 giây, nên nhịp dày không ảnh hưởng máy.
 - Xoá rác trong thư mục mã nguồn và chặn sinh lại:
   · lệnh chỉ đọc (`--xem-cau-hinh`) không tạo thư mục nữa — trước đây nó gọi
@@ -365,7 +369,7 @@ tool. Đề nghị Chairman: tuần tới kế toán làm tay TRÊN ĐÚNG cặp
   · `pytest.ini` tắt cache provider.
   Hai phép thử mới canh đúng hai chuyện này.
 - README viết lại cho FIN: badge, mục có emoji, sơ đồ ASCII, bảng tra sự cố.
-- `git init` + commit đầu tiên, 40 file. Chưa đẩy lên remote — chờ Chairman tạo
+- `git init` + commit đầu tiên, 40 file. Chưa đẩy lên remote — chờ user tạo
   repo và cho địa chỉ.
 
 ### Soi tĩnh của Claude
@@ -374,36 +378,39 @@ tool. Đề nghị Chairman: tuần tới kế toán làm tay TRÊN ĐÚNG cặp
 không xoá file nào, chỉ đổi tên; mọi nhánh lỗi đều ghi log và để lại file .txt
 giải thích; tổng 6 nhóm luôn được ép bằng Total trước khi ghi.
 
-### Ô ký nghiệm thu — 2026-09-24
+### Kết luận cũ của người làm (chuẩn v1.1) — 2026-09-24
 
 **1. Logic tính số, đọc file Misa, chốt chặn lệch kỳ, sổ ghi, ghép nhiều kỳ,
 xử lý đứt quãng và chen hàng: ĐẠT.**
-Ký: claude-logisticist, 2026-09-24.
+Ký: claude, 2026-09-24.
 Bằng chứng: 29 phép thử (9 phép thử chạy được cả khi không có dữ liệu thật),
 các lệnh và kết quả dán ở khoang AUDIT phía trên, và 6 tuần dữ liệu thật
 W33-W35, W37-W39 đã chạy ra báo cáo.
 
-**2. Chạy trên Windows của Chairman — chạy được, ĐẠT một phần.**
-Ký: claude-logisticist, 2026-09-24, trên bằng chứng gián tiếp.
+**2. Chạy trên Windows của user — chạy được, ĐẠT một phần.**
+Ký: claude, 2026-09-24, trên bằng chứng gián tiếp.
 Bằng chứng: `log/runner.log` trong thư mục đích ghi lần chạy lúc
-`2026-09-23 16:04:04` do Chairman tự bấm trên máy Windows, sinh ra
+`2026-09-23 16:04:04` do user tự bấm trên máy Windows, sinh ra
 `2026_W39_Bang_cong_no_tuan_19.09-25.09.2026.xlsx` với 10 khách, tổng
 1.635.150.000. Lần chạy này chứng minh trên Windows: Python và openpyxl chạy
 được, đọc được file Misa, đường dẫn có dấu cách và tiếng Việt không vỡ, ghi
 được file kết quả vào thư mục OneDrive.
 
-**3. Ba thứ vẫn `[RUNTIME CHƯA KIỂM]`, Claude không ký:**
+**3. Ba thứ vẫn `[RUNTIME UNVERIFIED]`, Claude không ký:**
 - `setup.bat` — wizard dò thư mục, cài thư viện, chưa ai chạy.
 - Task Scheduler — chưa ai xác nhận tác vụ được tạo và tự gọi đúng nhịp.
 - Hiển thị trong Excel thật — màu tím `#4d148c`, cam `#ff6200`, và tiếng Việt
   trong sheet "Cần xem lại".
-Ba mục này Chairman hoặc Codex ký, mỗi mục một dòng, ghi thẳng vào đây. Đủ ba
+Ba mục này user hoặc codex ký, mỗi mục một dòng, ghi thẳng vào đây. Đủ ba
 dòng thì phiếu chuyển `đóng-đạt`.
 
 **4. Nghiệm thu nghiệp vụ còn treo:** phép so với bản kế toán làm tay chỉ có
 giá trị khi cả hai dùng cùng một cặp file Misa. Chưa có lần nào như vậy.
 Việc này mở phiếu mới WR-02, không giữ WR-01 mở để chờ.
 
+Soát: chưa — chờ codex (phiếu chuyển từ chuẩn v1.1 sang v2.0 ở WR-10; các ô ký theo vai cũ không còn hiệu lực).
+Kết quả:
+-- claude - 2026-10-27 11:40 UTC+7
 
 ## HISTORY
 
@@ -414,7 +421,7 @@ Lessons    Dựng phòng bàn giao theo Chuẩn Bàn Giao v1.1. Ghi nhận trư�
            bắt tay: file Misa tải về bị Windows đánh số thứ tự trong tên, đã
            gây nhầm một lần trong lúc bàn logic — luật "đọc ngày chốt bên
            trong file, không tin tên file" đã lên RULES.md ngày 2026-09-23.
--- claude-logisticist
+-- claude
 
 ### 2026-09-24 (tối)
 Failure    không
@@ -426,17 +433,17 @@ Lessons    Fixtures là dữ liệu công nợ thật, đã đưa ra khỏi git 
            khai thì tên nhân sự và số nợ của khách không nên nằm trong đó.
            Lịch sử git dựng lại thành một commit sạch vì các commit trước còn
            chứa tên người và dữ liệu thật.
--- claude-logisticist
+-- claude
 
 ### 2026-09-24
-Failure    Xoá nhầm settings.json của máy Chairman khi dọn thư mục mã nguồn,
+Failure    Xoá nhầm settings.json của máy user khi dọn thư mục mã nguồn,
            làm tool đứng im. Tool lại thoát không ghi nhật ký nên không ai biết.
            Báo lỗi giả: không
 Lessons    Dọn dẹp thư mục người khác đang dùng thì phải liệt kê trước cái gì
            sẽ xoá. File cấu hình của máy trông như rác nhưng là thứ duy nhất
            tool biết đường về nhà.
            Mọi nhánh dừng sớm phải ghi nhật ký. Đã lên RULES.md 5.3a ngày 24/09.
--- claude-logisticist
+-- claude
 
 ### 2026-09-23 (chiều)
 Failure    không
@@ -449,4 +456,4 @@ Lessons    Kế toán trả lời đợt 2. Ba dòng AHC / Optec / Grand hoá ra
            nhau trên bảng số.
            Thêm cơ chế "kế toán khai đè" cho credit term, vì hợp đồng mới ký
            không thể suy ra từ hai file Misa. Đã lên RULES.md ngày 2026-09-23.
--- claude-logisticist
+-- claude

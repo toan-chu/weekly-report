@@ -73,7 +73,7 @@ def tao_file_khoi_dong() -> Path:
 
 def lenh_chay_an() -> str:
     """Lệnh Task Scheduler gọi thẳng pythonw.exe (không qua .bat) để không bật cửa sổ CMD
-    (Chairman 09/10: mỗi lần chạy hiện CMD nhìn mệt)."""
+    (user 09/10: mỗi lần chạy hiện CMD nhìn mệt)."""
     pythonw = Path(sys.executable).with_name("pythonw.exe")
     trinh_chay = pythonw if pythonw.exists() else Path(sys.executable)
     return f'"{trinh_chay}" "{GOC / "runner.py"}"'
@@ -93,11 +93,11 @@ def main() -> int:
     ws = cfg.workspace
 
     # WR-08: file Client Master chung (credit term + hợp đồng) — Sales và FIN cùng điền trên OneDrive
-    print("\nFile Client Master (credit term + hợp đồng khách hàng) dùng chung trên OneDrive:")
+    print("\nFile credit term (term, hạn mức, hợp đồng khách hàng) dùng chung trên OneDrive:")
     print("  - Nếu file nằm sẵn trong thư mục sample/ của workspace: bấm Enter.")
     print("  - Nếu file nằm chỗ khác trên OneDrive: mở thư mục chứa file, giữ Shift + chuột phải vào file,")
     print('    chọn "Copy as path", rồi dán vào đây.')
-    cm = input("Đường dẫn file Client Master (Enter = dùng sample/): ").strip()
+    cm = input("Đường dẫn file credit term (Enter = dùng sample/): ").strip()
     if cm:
         p = caidat.dat_client_master(cm)
         print(f"  Đã ghi: {p}" + ("" if p.is_file() else "  ← CHƯA THẤY FILE: kiểm tra OneDrive đã đồng bộ chưa"))

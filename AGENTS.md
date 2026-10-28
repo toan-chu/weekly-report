@@ -1,22 +1,18 @@
-# weekly-report — bộ định tuyến
+# weekly-report
 
-Công cụ sinh báo cáo công nợ phải thu hằng tuần của Trustana Việt Nam.
-Kế toán thả 2 file Excel xuất từ Misa vào thư mục OneDrive; một tiến trình
-Python chạy nền theo lịch đọc 2 file đó cộng với sổ ghi của chính nó, rồi
-điền ra file báo cáo tuần theo mẫu chuẩn. Không ai phải điền tay.
-
-Đây là tool đầu tiên trong chuỗi credit control. Các tool sau và phase
-Power Automate dùng chung thư mục OneDrive này.
+Công cụ sinh báo cáo công nợ hằng tuần (phải thu, phải trả, dòng tiền, rủi ro) cho Trustana Việt Nam.
+Kế toán thả 6 file (5 file Misa + 1 file SMS AR-AP) vào thư mục `input/` trên OneDrive; một tiến trình
+Python chạy nền theo lịch đọc các file đó cùng sổ ghi của chính nó, rồi ghi file Excel báo cáo tuần và
+dashboard HTML vào thư mục gốc. Không ai phải điền tay. Đây là tool đầu tiên trong chuỗi credit control.
 
 ## Trước khi làm bất cứ việc gì
 
-1. Đọc `handoff/RULES.md` — luật đứng của dự án.
+1. Đọc `handoff/RULES.md` — luật đứng, sinh từ handoff-standard v2.0.
 2. Đọc `handoff/STATE.md` — hiện trạng, việc đang mở.
-3. Mở ĐÚNG MỘT phiếu việc được giao trong `handoff/`.
+3. Mở đúng một phiếu việc của mình trong `handoff/`.
 
-Đụng tới kiến trúc thì đọc thêm `handoff/MAP.md`, và vẽ ở đó TRƯỚC khi đổi mã.
+Đụng tới kiến trúc thì đọc thêm `handoff/MAP.md` và vẽ ở đó trước khi đổi mã.
+Cấm quét cả `handoff/`, cấm đọc phiếu trong `handoff/done/` khi không có trường `Nối tiếp` trỏ tới,
+cấm đọc `handoff/docs/` khi không có dòng nào trỏ tới, cấm đọc `handoff/archive/` trừ khi user yêu cầu.
 
-Cấm quét cả thư mục `handoff/`. Cấm đọc phiếu đã đóng khi không có trường
-`Nối tiếp` trỏ tới. Cấm đọc `handoff/docs/` khi không có dòng nào trỏ tới.
-
-Chuẩn phối hợp: `../handoff-standard-v1.1.md`.
+Chuẩn phối hợp: `handoff/handoff-standard-v2.0.md`.

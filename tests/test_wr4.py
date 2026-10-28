@@ -367,15 +367,17 @@ def test_ten_sales_day_du():
     assert th.ten_sales("Phạm Thị Thương Hoài") == "Phạm Thị Thương Hoài"
 
 
-def test_ly_do_tu_dong_khi_sales_chua_ghi_va_khong_mang_sang_tuan_sau(ws):
+def test_sales_chua_ghi_thi_o_ly_do_de_trong_khong_co_chu_tu_dong(ws):
+    # WR-11 (user 27/10): "xoá toàn bộ chữ Tự động" — trước đây tool tự viết "[TỰ ĐỘNG] …" vào ô lý do
     _tha_4_file(ws)
     assert runner.quet_thu_muc(ws) == 1
     f = next(ws.ra.glob("*.xlsx"))
     rec = openpyxl.load_workbook(f)[th.SHEET_BANG]
     hang_a = next(r for r in rec.iter_rows(min_row=6, values_only=True) if r[1] == "KA")
-    assert hang_a[13].startswith(th.NHAN_TU_DONG) and "CHƯA CÓ GIẢI TRÌNH" in hang_a[13]
+    assert hang_a[13] is None, "ô lý do của khách chưa giải trình để trống"
+    assert not any(th.NHAN_TU_DONG in str(v) for r in rec.iter_rows(values_only=True) for v in r if v)
     may = baocao.doc_bao_cao(f)
-    assert may[misa.chuan_hoa_ten(A)].ly_do == "", "câu tự động không được coi là lời Sales"
+    assert may[misa.chuan_hoa_ten(A)].ly_do == ""
 
 
 

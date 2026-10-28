@@ -1,13 +1,14 @@
-Mã:         WR-06
-Mạch:       WR — báo cáo công nợ phải thu hằng tuần
-Nối tiếp:   WR-05
-Giao cho:   claude-logisticist   [COWORK-EXEC]
-Trạng thái: chờ-nghiệm-thu
-Vòng:       1/2
+Mã: WR-06
+Mạch: WR - báo cáo công nợ phải thu hằng tuần
+Nối tiếp: WR-05
+Người làm: claude
+Người soát: codex
+Trạng thái: chờ-soát
+Vòng: 1/2
 
 ## ĐỀ BÀI
 
-**Mục tiêu nghiệp vụ** (FIN + Chairman, 2026-10-09)
+Kỳ vọng của user: (FIN + user, 2026-10-09)
 Số tiền job chưa thanh toán lấy từ Misa, không lấy từ SMS (tỷ giá SMS khác tỷ giá xuất hoá đơn
 nên không khớp tổng công nợ). FIN thêm 2 file xuất từ ĐẦU NĂM tới nay: Bán hàng (cột "TT thanh
 toán") và Sổ chi tiết tài khoản 131 (cột "Mã đối tượng THCP" = số job). FIN không xuất từ 2022:
@@ -15,14 +16,18 @@ hoá đơn các năm trước trả khác loại tiền không gắn được ph
 Luật FIN: chỉ "Đã thanh toán" mới tính là đã trả; "Chưa thanh toán" và "Thanh toán một phần"
 đều liệt kê. Cộng job chưa thanh toán, so với dư nợ của khách; lệch thì báo màu kèm gợi ý để FIN
 xem lại (quên đánh giá chênh lệch tỷ giá, thanh toán một phần Misa không tự trừ...).
-Chairman: không ẩn số tiền job ở khách lệch — FIN tự kiểm, tự sửa.
+user: không ẩn số tiền job ở khách lệch — FIN tự kiểm, tự sửa.
 
-**Ngoài phạm vi**
+Mục tiêu: Tiền job chưa thanh toán lấy từ Misa (Bán hàng + Sổ chi tiết 131), kèm cột đối chiếu tô màu để FIN tự soát.
+
+Ngoài phạm vi:
 - Dashboard nhiều trang + bấm xuyên (làm sau Excel, phiếu riêng).
 - Nợ vendor theo job/loại phí; màu phải trả tăng — chờ FIN trả lời.
 
-**Kịch bản nghiệm thu**
-Chairman: test ngay trên máy Chairman (workspace trong tests/).
+Kế thừa: (phiếu mở trước v2.0, không ghi; xem phiếu ở trường Nối tiếp)
+
+Kịch bản test:
+user: test ngay trên máy user (workspace trong tests/).
 
 ## TODO
 - [x] Nhận dạng 2 file theo nội dung (ban-hang, so-chi-tiet); runner chờ đủ 6 file (tối đa 2 giờ)
@@ -37,6 +42,7 @@ Chairman: test ngay trên máy Chairman (workspace trong tests/).
 
 ## AUDIT
 
+Báo cáo của người làm:
 ```
 $ python -m pytest -o addopts="" -q        55 passed, 20 skipped   (tests/test_wr6.py: 5 phép thử mới)
 W40 thật (chạy trên máy ảo, bản sao sổ ghi):
@@ -46,7 +52,13 @@ W40 thật (chạy trên máy ảo, bản sao sổ ghi):
     LCC UPP, CHAI KA: lệch đúng bằng phiếu thu 08/10 → đã xử lý "trả sau ngày cuối kỳ", nay Khớp
   Review: 18 khách Misa đã hết nợ nhưng hoá đơn vẫn "chưa TT" (TRANSTEAMLOGISTICS 8 HĐ 1,02 tỷ ...)
 ```
-[RUNTIME CHƯA KIỂM] chạy bằng Task Scheduler trên Windows của Chairman.
+[RUNTIME UNVERIFIED] chạy bằng Task Scheduler trên Windows của user.
+
+Giả định kỹ thuật: (phiếu mở trước v2.0, chưa ghi theo khuôn ba dòng)
+
+Soát: chưa — chờ codex (phiếu chuyển từ chuẩn v1.1 sang v2.0 ở WR-10; các ô ký theo vai cũ không còn hiệu lực).
+Kết quả:
+-- claude - 2026-10-27 11:40 UTC+7
 
 ## HISTORY
 

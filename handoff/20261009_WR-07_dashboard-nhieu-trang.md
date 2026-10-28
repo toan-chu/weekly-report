@@ -1,23 +1,28 @@
-Mã:         WR-07
-Mạch:       WR — báo cáo công nợ phải thu hằng tuần
-Nối tiếp:   WR-05, WR-06
-Giao cho:   claude-logisticist   [COWORK-EXEC]
-Trạng thái: chờ-nghiệm-thu
-Vòng:       1/2
+Mã: WR-07
+Mạch: WR - báo cáo công nợ phải thu hằng tuần
+Nối tiếp: WR-05, WR-06
+Người làm: claude
+Người soát: codex
+Trạng thái: chờ-soát
+Vòng: 1/2
 
 ## ĐỀ BÀI
 
-**Mục tiêu nghiệp vụ** (Chairman, 2026-10-09)
+Kỳ vọng của user: (user, 2026-10-09)
 Mỗi tab trên thanh đầu trang là một màn riêng, không cuộn lên xuống. Bấm tab nào hiện tab đó.
 Vào chi tiết (một Sales, một khách) thì mới hiện rõ phần của người đó, và các tab khác chỉ còn
 phần liên quan (kiểu dashboard nhiều trang + drill-through như Looker Studio / Power BI).
 Kèm theo: Task Scheduler chạy mà không bật cửa sổ CMD.
 
-**Ngoài phạm vi**
+Mục tiêu: Dashboard nhiều trang có bấm xuyên theo khách và Sales; lịch chạy nền không bật cửa sổ CMD.
+
+Ngoài phạm vi:
 - Nợ vendor theo job/loại phí; màu phải trả tăng — chờ FIN.
 
-**Kịch bản nghiệm thu**
-Chairman: test ngay trên máy Chairman.
+Kế thừa: (phiếu mở trước v2.0, không ghi; xem phiếu ở trường Nối tiếp)
+
+Kịch bản test:
+user: test ngay trên máy user.
 
 ## TODO
 - [x] 6 trang: Tổng quan · Khách hàng · Sales · Nợ xấu · Phải trả · Dòng tiền; viên tím đứng ở trang đang mở
@@ -30,6 +35,7 @@ Chairman: test ngay trên máy Chairman.
 
 ## AUDIT
 
+Báo cáo của người làm:
 ```
 $ python dashboard/build.py                 Credit_Dashboard.html (1.34 MB)
 $ python -m pytest -o addopts="" -q         55 passed, 20 skipped
@@ -37,7 +43,13 @@ Chromium headless với báo cáo W40 (bản WR-06): 0 lỗi console.
   Sales → bấm Trần Văn Hiếu → #sales?s=…; sang tab Nợ xấu chỉ còn 3 khách của Hiếu; Back quay lại đúng.
   Bấm khách trong trang Sales → trang khách LCC UPP (9 job, Đối chiếu: Khớp). In PDF: 11 trang.
 ```
-[RUNTIME CHƯA KIỂM] Đổi lịch chạy ẩn (schtasks /change) trên Windows của Chairman.
+[RUNTIME UNVERIFIED] Đổi lịch chạy ẩn (schtasks /change) trên Windows của user.
+
+Giả định kỹ thuật: (phiếu mở trước v2.0, chưa ghi theo khuôn ba dòng)
+
+Soát: chưa — chờ codex (phiếu chuyển từ chuẩn v1.1 sang v2.0 ở WR-10; các ô ký theo vai cũ không còn hiệu lực).
+Kết quả:
+-- claude - 2026-10-27 11:40 UTC+7
 
 ## HISTORY
 

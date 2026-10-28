@@ -149,6 +149,12 @@ def nap_ban_tay(thu_muc: Path, so: sg.SoGhi) -> int:
             ghi_luc = so.file_tool.get(f.name)
             ban_nguoi = (not baocao.co_tab_review(f) or "human" in f.name.lower()
                          or (ghi_luc is not None and abs(f.stat().st_mtime - ghi_luc) > 2))
+            # WR-12 (user 27/10: "tránh Sales sửa lại lời mình đã ghi"): tuần đã có báo cáo tuần sau là tuần ĐÃ CHỐT —
+            # sửa file của tuần đó không còn tác dụng (lý do tuần trước giữ đúng lời đã ghi khi tuần đó còn mở)
+            if ngay.isoformat() in so.trang and any(n > ngay.isoformat() for n in so.trang):
+                so.da_nap[f.name] = dau
+                ghi_log(f"  {f.name}: tuần {ngay:%d/%m/%Y} đã chốt (đã có báo cáo tuần sau) — không đọc lại chỉnh sửa")
+                continue
             cu = so.nguon_trang.get(ngay.isoformat())
             if cu and cu.get("ban_nguoi") and not ban_nguoi and cu.get("file") != f.name:
                 # WR-04: bản người làm (không có tab Review) luôn thắng bản tool cùng ngày chốt
@@ -279,7 +285,7 @@ def chay_full(
             f"  Tổng hợp: đến {th.den_ngay:%d/%m/%Y} · Chi tiết: đến {ct.den_ngay:%d/%m/%Y}")
     canh_bao: List[str] = []
     if ghep.FILE_MASTER and not ghep.FILE_MASTER.is_file():
-        canh_bao.append(f"Không thấy file Client Master: {ghep.FILE_MASTER}. OneDrive trên máy này chưa đồng bộ "
+        canh_bao.append(f"Không thấy file credit term chung: {ghep.FILE_MASTER}. OneDrive trên máy này chưa đồng bộ "
                         "file đó (hoặc file bị đổi tên/chuyển chỗ) — tuần này dùng bảng term trong sample/.")
         ghi_log(canh_bao[-1])
     if ct.tu_ngay > dt.date(2022, 1, 1):
@@ -344,14 +350,57 @@ def chay_full(
         canh_bao.append("Không có file Bán hàng + Sổ chi tiết TK131: job lấy từ SMS (cách cũ), chưa có cột "
                         "Đối chiếu.")
     credit_terms = ghep.doc_credit_term(thu_muc_mau)
-    kq = tindung.tinh_full(th, ct, so, dong_sms, bang, pt, ngay_chot, job_no_cu=job_no_cu, job_misa=job_misa,
-                           credit_terms=credit_terms, ma_no_cu=ghep.ma_job_no_cu(thu_muc_mau))
-    # WR-08 (Chairman 13/10): cảnh báo hợp đồng / credit term từ Client Master → sheet Contracts + Summary
+    # WR-08 (user 13/10): cảnh báo hợp đồng / credit term từ Client Master → sheet Contracts + Summary
+    # WR-11: đọc TRƯỚC khi tính — hạn mức nợ, "Không nâng hạng màu", "Đã có hợp đồng" dùng cho màu ở AR Risk
     from wr import khachhang
+    # WR-12 (user 28/10): file credit term còn mẫu cũ (thiếu cột / sheet tên cũ) → tool tự nâng lên mẫu mới ngay đầu lần
+    # chạy, kể cả tuần không có khách mới. Cùng điều kiện an toàn: chỉ thêm cột, sao lưu trước, file đang mở thì để sau.
+    f_ct0 = khachhang.tim_file_credit_term(thu_muc_mau)
+    if f_ct0 is not None and khachhang.thieu_mau(f_ct0):
+        try:
+            _n, cau = khachhang.them_khach_moi(f_ct0, [], Path(duong_so_ghi).parent / "luu-tru", ngay_chot)
+        except Exception as loi:             # không bao giờ vì việc này mà không ra báo cáo
+            cau = f"Chưa nâng {f_ct0.name} lên mẫu mới: {loi}"
+        if cau:
+            ghi_log(f"  {cau}")
+            canh_bao.append(cau)
     master = khachhang.doc_master(thu_muc_mau, ngay_chot)
+    co_cot_hd = any(m.get("co_hd") is not None for m in master.values())
+    if master and not co_cot_hd:
+        canh_bao.append("File credit term chưa có cột 'Đã có hợp đồng' (mẫu cũ): chưa đếm được khách chưa có hợp đồng, màu "
+                        "chưa nâng theo tiêu chí này. Chạy tools/nang_cap_credit_term.py một lần.")
+    if master and not any(m.get("han_muc") for m in master.values()):
+        canh_bao.append("File credit term chưa có Hạn mức nợ cho khách nào: màu chưa nâng theo tiêu chí "
+                        "'dư nợ vượt hạn mức'.")
+    kq = tindung.tinh_full(th, ct, so, dong_sms, bang, pt, ngay_chot, job_no_cu=job_no_cu, job_misa=job_misa,
+                           credit_terms=credit_terms, ma_no_cu=ghep.ma_job_no_cu(thu_muc_mau), master=master)
+    kq.master = master
     term_truoc = {str(m).upper(): hs.credit_term for m, hs in (so.trang_truoc(ngay_chot) or {}).items()
                   if getattr(hs, "credit_term", "")}
     canh_bao_hd = khachhang.canh_bao_hop_dong(master, kq.rui_ro, ngay_chot, term_truoc)
+    # WR-12 (FIN 27/10: "tự update vào đúng chỗ, không cần can thiệp"): khách đang nợ chưa có trong file credit term →
+    # tool tự thêm dòng (chỉ thêm, sao lưu trước, file đang mở thì để lần sau). Báo cáo vẫn ra dù thêm được hay không.
+    moi = [c for c in canh_bao_hd if c["loai"] == khachhang.LOAI_CHUA_MASTER]
+    kq.them_khach = ""
+    if moi:
+        f_ct = khachhang.tim_file_credit_term(thu_muc_mau)
+        if f_ct is None and not master:
+            f_ct = Path(thu_muc_mau) / khachhang.TEN_FILE_MAC_DINH if thu_muc_mau else None
+        if f_ct is None:
+            kq.them_khach = ("Chưa thêm khách mới: không thấy file credit term đúng mẫu (sheet 'Credit term') trong "
+                             "sample/ — chạy tools/nang_cap_credit_term.py với file đang dùng.")
+        else:
+            try:
+                n_them, kq.them_khach = khachhang.them_khach_moi(f_ct, moi, Path(duong_so_ghi).parent / "luu-tru",
+                                                                 ngay_chot)
+            except Exception as loi:             # không bao giờ vì việc này mà không ra báo cáo
+                n_them, kq.them_khach = 0, f"Chưa thêm được khách mới vào {f_ct.name}: {loi}"
+            for c in moi:
+                c["da_them"] = n_them > 0
+        if kq.them_khach:
+            ghi_log(f"  {kq.them_khach}")
+            if not any(c.get("da_them") for c in moi):
+                canh_bao.append(kq.them_khach)
     dem = lambda f: sum(1 for c in canh_bao_hd if f(c["loai"]))
     kq.chi_so.update({
         "hd_het_han": dem(lambda x: x == "Hợp đồng đã hết hạn"),
@@ -359,7 +408,13 @@ def chay_full(
         "khach_chua_term": dem(lambda x: x == "Chưa có credit term"),
         "term_doi": dem(lambda x: x == "Credit term vừa đổi"),
         "khach_chua_han_hd": sum(1 for r in kq.rui_ro if not (master.get(r.ma.upper()) or {}).get("han_dung")),
-        "khach_chua_hd": sum(1 for r in kq.rui_ro if not (master.get(r.ma.upper()) or {}).get("co_hd")),
+        # None (ô trống trên Summary) khi Client Master chưa có cột — không đếm sai (lỗi tự soi WR-09)
+        "khach_chua_hd": (sum(1 for r in kq.rui_ro if r.co_hd is False) if co_cot_hd else None),
+        "khach_chua_master": dem(lambda x: x == khachhang.LOAI_CHUA_MASTER),
+        "khach_chua_han_muc": sum(1 for r in kq.rui_ro if not r.han_muc),
+        **{f"mau_{i}": sum(1 for r in kq.rui_ro if r.muc == i) for i in range(5)},
+        "sales_chua_giai_trinh": len({r.salesman or "(chưa có Sales)" for r in kq.rui_ro
+                                      if r.qua_han > 0.5 and r.s[3]}),
     })
     # Lịch sử tuần: tuần đầu dùng v0.4 thì dựng lại điểm của tuần trước từ báo cáo cũ (sổ ghi)
     truoc_ngay = so.ngay_trang_truoc(ngay_chot)
@@ -414,7 +469,7 @@ def chay_full(
     def them_sheet(wb):
         ghifull.ghi_summary(wb, kq, ngay_chot, lich_su)
         ghifull.ghi_risk(wb, kq, ngay_chot)
-        ghifull.ghi_contracts(wb, canh_bao_hd, ngay_chot)
+        ghifull.ghi_contracts(wb, canh_bao_hd, ngay_chot, kq.them_khach)
         ghifull.ghi_payable(wb, kq, ngay_chot, ky)
         ghifull.ghi_cash(wb, kq, ngay_chot, ky)
         ghifull.ghi_invoices(wb, kq, ngay_chot)
@@ -662,7 +717,7 @@ def main(argv=None) -> int:
     p.add_argument("--khong-tao-thu-muc-con", action="store_true",
                    help="dùng thẳng thư mục đã trỏ, không tạo Cong-No-Workspace bên trong")
     p.add_argument("--xem-cau-hinh", action="store_true")
-    p.add_argument("--client-master", help='file Client Master chung trên OneDrive của máy này ("" = bỏ, dùng sample/)')
+    p.add_argument("--client-master", help='file credit term chung trên OneDrive của máy này, nếu không để trong sample/ ("" = bỏ)')
     p.add_argument("--chi-tiet", help="file Chi tiết công nợ phải thu từ 2022 (chạy tay, v0.4)")
     p.add_argument("--phai-tra", help="file Tổng hợp công nợ phải trả (chạy tay, v0.4)")
     p.add_argument("--sms", help="file SMS AR-AP (chạy tay)")
@@ -695,16 +750,16 @@ def main(argv=None) -> int:
             _in(f"    {d}")
         _in(f"Mẫu chuẩn: {cfg.mau_chuan}")
         cm = cfg.client_master
-        _in(f"Client Master: {cm if cm else '(chưa đặt — đọc bảng term trong sample/)'}"
+        _in(f"File credit term: {cm if cm else '(chưa đặt — đọc bảng term trong sample/)'}"
             + ("" if not cm or cm.is_file() else "  ← KHÔNG THẤY FILE"))
         return 0
 
     if a.client_master is not None:
         p = caidat.dat_client_master(a.client_master)
         if p is None:
-            _in("Đã bỏ đường dẫn Client Master: tool đọc bảng term trong sample/.")
+            _in("Đã bỏ đường dẫn file credit term chung: tool đọc bảng term trong sample/.")
             return 0
-        _in(f"Client Master của máy này: {p}")
+        _in(f"File credit term của máy này: {p}")
         if not p.is_file():
             _in("  Chưa thấy file ở đường dẫn này. Kiểm tra OneDrive đã đồng bộ chưa, rồi chạy lại.")
             return 2

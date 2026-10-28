@@ -84,6 +84,25 @@ def bang(ws, hang: int, cot: Sequence[tuple], dong: List[list], tong: bool = Tru
     return hang
 
 
+# --- WR-12: link hợp đồng (PDF) bấm mở trong trình duyệt -----------------------------------------------------
+
+NHAN_LINK = "Mở hợp đồng"
+
+
+def la_link(u) -> bool:
+    return str(u or "").strip().lower().startswith(("http://", "https://"))
+
+
+def _o_link(o, url) -> None:
+    """Ô 'Mở hợp đồng' có hyperlink tới file hợp đồng; link không phải http(s) thì để trống (không mở file lạ)."""
+    if not la_link(url):
+        o.value = None
+        return
+    o.value = NHAN_LINK
+    o.hyperlink = str(url).strip()
+    o.font = Font(name=th.PHONG_NOI_DUNG, size=10, color="0563C1", underline="single")
+
+
 # --- Summary ---------------------------------------------------------------
 
 CHI_SO = [
@@ -116,10 +135,19 @@ CHI_SO = [
     # WR-08: hợp đồng / credit term (sheet Contracts)
     ("hd_het_han", "Contracts expired, customer still owes", "so"),
     ("hd_sap_het_30", "Contracts expiring within 30 days", "so"),
-    ("khach_chua_term", "Customers owing without a credit term in Client Master", "so"),
+    ("khach_chua_term", "Customers owing without a credit term in the credit term file", "so"),
     ("term_doi", "Credit terms changed since last week", "so"),
     ("khach_chua_han_hd", "Customers owing without contract expiry date", "so"),
-    ("khach_chua_hd", "Customers owing without a signed contract (Client Master ✓)", "so"),
+    ("khach_chua_hd", "Customers owing without a signed contract (credit term file ✓; blank = column missing)", "so"),
+    # WR-11
+    ("khach_chua_master", "New customers owing, not in the credit term file before this run (end of Contracts)", "so"),
+    ("khach_chua_han_muc", "Customers owing without a credit limit in the credit term file", "so"),
+    ("mau_4", "Colour level 4 · dark red (AR Risk)", "so"),
+    ("mau_3", "Colour level 3 · red", "so"),
+    ("mau_2", "Colour level 2 · orange", "so"),
+    ("mau_1", "Colour level 1 · yellow", "so"),
+    ("mau_0", "Colour level 0 · green", "so"),
+    ("sales_chua_giai_trinh", "Salesmen with overdue customers and no reason this week (table at the end)", "so"),
 ]
 
 LICH_SU = [
@@ -209,10 +237,32 @@ def ghi_summary(wb, kq: KetQuaFull, ngay_chot: dt.date, lich_su: List[dict]) -> 
     dl = [[x.get(k) for k, *_ in LICH_SU] for x in lich_su]
     bang(ws, hang, cot, dl, tong=False)
     # bảng lịch sử dùng chung cột với bảng trên: đặt lại độ rộng cho bảng trên dễ đọc
+    hang = _bang_sales_chua_giai_trinh(ws, kq, hang + len(dl) + 3)
     for chu, rong in zip("ABCDEF", (52, 18, 18, 18, 15, 18)):
         ws.column_dimensions[chu].width = rong
     ws.freeze_panes = None
     ws.sheet_view.showGridLines = False
+
+
+def _bang_sales_chua_giai_trinh(ws, kq: KetQuaFull, hang: int) -> int:
+    """WR-11 (ảnh 2: 'thông báo sale nào chưa điền lý do'): mỗi Sales — số khách đang quá hạn mà cột lý do tuần
+    này còn trống, tổng quá hạn, tên khách. Sales ghi lý do ở Receivables, cột Reason for late payment."""
+    gom: dict = {}
+    for r in kq.rui_ro:
+        if r.qua_han > 0.5 and r.s[3]:
+            g = gom.setdefault(r.salesman or "(chưa có Sales)", [0, 0.0, []])
+            g[0] += 1
+            g[1] += r.qua_han
+            g[2].append(r.ma or r.ten)
+    ws.cell(row=hang, column=1, value="Reasons missing this week — by salesman").font = Font(
+        name=th.PHONG_TIEU_DE, size=11, bold=True, color=th.CAM)
+    if not gom:
+        ws.cell(row=hang + 1, column=1, value="Mọi khách quá hạn đã có lý do tuần này.").font = Font(
+            name=th.PHONG_NOI_DUNG, size=10, italic=True)
+        return hang + 2
+    dong = [[s, n, v, ", ".join(ds)] for s, (n, v, ds) in sorted(gom.items(), key=lambda x: -x[1][1])]
+    return bang(ws, hang + 1, [("Salesman", "ten", 52), ("Customers", "so", 18), ("Overdue", "tien", 18),
+                               ("Customer codes", "ten", 18)], dong, tong=False)
 
 
 # --- AR Risk ---------------------------------------------------------------
@@ -227,8 +277,18 @@ COT_RISK = [
     ("S1", "so", 5), ("S2", "so", 5), ("S3", "so", 5), ("S4", "so", 5), ("S5", "so", 5), ("S6", "so", 5),
     ("Promise date", "ten", 11), ("S7", "so", 5), ("Signals (S1-S3, S7)", "so", 10), ("Risk Code", "ten", 14), ("Risk Tier", "ten", 26),
     ("CEO review", "ten", 9), ("Trend (auto)", "ten", 50), ("Reason for late payment", "ten", 36),
-    ("Required action", "ten", 40), ("Job Number", "ten", 30),
+    ("Reason last week", "ten", 36),       # WR-11 PA1: lý do Sales ghi tuần trước (chỉ để đọc)
+    ("Required action", "ten", 40), ("Contract (PDF)", "ten", 14), ("Job Number", "ten", 30),
+    # WR-11 (CEO): màu theo tuổi nợ + nâng hạng. 4 cột dữ liệu (tool ghi số) rồi các cột công thức.
+    ("Credit limit (credit term file)", "tien", 15), ("Late invoices >15d (6 months)", "so", 10),
+    ("Signed contract (credit term file)", "ten", 10), ("No colour upgrade (credit term file)", "ten", 10),
+    ("Base level", "so", 7), ("T1 Overdue ≥ X", "so", 7), ("T2 Total > limit", "so", 7),
+    ("T3 ≥ N late invoices", "so", 7), ("T4 No contract / new ≥ Y", "so", 8), ("Straight to Red", "so", 7),
+    ("Upgrade +1", "so", 7), ("Final level", "so", 7), ("Colour", "ten", 10),
 ]
+COT_MAU_DAU = "Base level"
+# WR-11: màu tô cả hàng ở AR Risk theo Final level (0 xanh lá · 1 vàng · 2 cam · 3 đỏ · 4 đỏ đậm)
+MAU_MUC = ("E2EFDA", "FFF2CC", "FCE4D6", "F8CBAD", "C00000")
 
 
 def cong_thuc_risk(h: int, ngay_chot: Optional[dt.date] = None) -> dict:
@@ -247,9 +307,11 @@ def cong_thuc_risk(h: int, ngay_chot: Optional[dt.date] = None) -> dict:
     chot = f"DATE({nc.year},{nc.month},{nc.day})"
     LD, TIER = L["Reason for late payment"], L["Risk Tier"]
     nhan = th_.NHAN_TU_DONG
-    goc = f'IF({S4}=1,"",{LD})'                       # lý do thật của Sales (bỏ câu tự động)
+    LW = L["Reason last week"]
+    # lý do để xét nhóm: lý do tuần này; Sales chưa ghi (S4) thì lý do tuần trước (WR-11 PA1)
+    goc = f'IF({S4}=1,{LW},{LD})'
     tim = lambda ds: "OR(" + ",".join(f'ISNUMBER(SEARCH("{t}",{goc}))' for t in ds) + ")"
-    return {
+    ct = {
         "Total overdue": f"=SUM({b1}:{b5})",
         "S1": f"=IF(AND({U}>0,{J}-{U}>0.5,{Q}-{V}>=-0.5),1,0)",
         "S2": f"=IF(AND({Q}>0.5,ABS({Q}-{V})<1),1,0)",
@@ -257,7 +319,7 @@ def cong_thuc_risk(h: int, ngay_chot: Optional[dt.date] = None) -> dict:
         "S4": f'=IF(OR(TRIM({LD})="",LEFT(TRIM({LD}),{len(nhan)})="{nhan}"),1,0)',
         "S5": f'=IF(TRIM({E})="",1,0)',
         "S6": f"=IF(AND({J}>0.5,ABS({Q}-{J})<1),1,0)",
-        # S7 lỡ hẹn (Chairman 13/10): Promise date do tool đọc từ lý do, FIN sửa tay được
+        # S7 lỡ hẹn (user 13/10): Promise date do tool đọc từ lý do, FIN sửa tay được
         "S7": f'=IF(AND(ISNUMBER({PD}),{PD}<{chot},{Q}>0.5,{Q}-{V}>=-0.5),1,0)',
         "Signals (S1-S3, S7)": f"=SUM({S1}:{S3})+{S7}",
         "Risk Code": (f'=TRIM(IF({S1}=1,"S1 ","")&IF({S2}=1,"S2 ","")&IF({S3}=1,"S3 ","")&IF({S4}=1,"S4 ","")'
@@ -283,6 +345,41 @@ def cong_thuc_risk(h: int, ngay_chot: Optional[dt.date] = None) -> dict:
                             f'công văn đòi nợ có xác nhận gửi. Kế toán trưởng ký xác nhận phân nhóm.","Dừng cấp dịch '
                             f'vụ mới. Yêu cầu cam kết NGÀY cụ thể bằng văn bản trong 7 ngày."),""))'),
     }
+    ct.update(cong_thuc_mau(L, tim))
+    return ct
+
+
+def o_tham_so() -> dict:
+    """WR-11: ô chứa X, Y, N ở dòng 1–3 của AR Risk (cột ngay bên phải 'Base level'). Sửa ô là màu đổi theo
+    trong file đó; muốn đổi hẳn cho các tuần sau thì sửa NGUONG_X / NGUONG_Y / SO_HD_TRE_NANG (tindung.py)."""
+    c = get_column_letter([t for t, _, _ in COT_RISK].index(COT_MAU_DAU) + 2)
+    return {"X": f"${c}$1", "Y": f"${c}$2", "N": f"${c}$3"}
+
+
+def cong_thuc_mau(L: dict, tim) -> dict:
+    """WR-11 (CEO): cùng luật với tindung.danh_gia_mau — sửa một chỗ thì sửa cả hai."""
+    from .tindung import NGUONG_DU_LE, TU_KHOA_NANG_THANG
+    p = o_tham_so()
+    J, Q, U = L["Ending = Total"], L["Total overdue"], L["Last week total"]
+    b1, b2, b3, b4, b5 = (L[x] for x in ("1 - 30", "31 - 60", "61 - 90", "91 - 120", "120+"))
+    CL, LATE = L["Credit limit (credit term file)"], L["Late invoices >15d (6 months)"]
+    SC, NU = L["Signed contract (credit term file)"], L["No colour upgrade (credit term file)"]
+    BASE, T1, T2, T3, T4 = (L[x] for x in ("Base level", "T1 Overdue ≥ X", "T2 Total > limit",
+                                           "T3 ≥ N late invoices", "T4 No contract / new ≥ Y"))
+    ST, UP, FIN = L["Straight to Red"], L["Upgrade +1"], L["Final level"]
+    n = NGUONG_DU_LE
+    return {
+        "Base level": (f"=IF(N({b4})+N({b5})>={n},4,IF(N({b3})>={n},3,IF(N({b2})>={n},2,"
+                       f"IF(N({b1})>={n},1,0))))"),
+        "T1 Overdue ≥ X": f"=IF(N({Q})>={p['X']},1,0)",
+        "T2 Total > limit": f"=IF(AND(N({CL})>0,N({J})>N({CL})),1,0)",
+        "T3 ≥ N late invoices": f"=IF(N({LATE})>={p['N']},1,0)",
+        "T4 No contract / new ≥ Y": (f'=IF(AND(N({J})>0.5,OR({SC}="No",AND(N({U})<0.5,N({J})>={p["Y"]}))),1,0)'),
+        "Straight to Red": f"=IF({tim(TU_KHOA_NANG_THANG)},1,0)",
+        "Upgrade +1": f'=IF(AND({NU}<>"Yes",{T1}+{T2}+{T3}+{T4}>0),1,0)',
+        "Final level": f"=MIN(4,IF({ST}=1,MAX({BASE},3),{BASE}+{UP}))",
+        "Colour": f'=CHOOSE({FIN}+1,"Xanh","Vàng","Cam","Đỏ","Đỏ đậm")',
+    }
 
 
 def ghi_risk(wb, kq: KetQuaFull, ngay_chot: dt.date) -> None:
@@ -298,7 +395,9 @@ def ghi_risk(wb, kq: KetQuaFull, ngay_chot: dt.date) -> None:
         dong.append([i, r.ma, r.ten, r.credit_term, r.salesman, r.chia_sales, r.dau_ky, r.tang, r.giam,
                      r.cuoi_ky, r.nhap_bo_sung, *r.nhom, r.qua_han, r.tt_total, r.tt_qua_han, r.tt_61, *r.s, r.ngay_hen, r.s7,
                      r.so_dau_hieu, r.ma_dau_hieu, r.nhom_rui_ro, "Yes" if r.ceo else "",
-                     r.xu_huong, r.ly_do, r.viec_can_lam, r.job])
+                     r.xu_huong, r.ly_do, r.ly_do_truoc, r.viec_can_lam, NHAN_LINK if la_link(r.link_hd) else "", r.job,
+                     r.han_muc, r.so_hd_tre, {True: "Yes", False: "No"}.get(r.co_hd, ""),
+                     "Yes" if r.khong_nang else "", r.muc_goc, *r.tieu_chi, r.nang_thang, r.nang, r.muc, r.mau])
     hang = bang(ws, 5, COT_RISK, dong)
     vi_tri = {ten: i for i, (ten, _, _) in enumerate(COT_RISK, start=1)}
     so_cot = {"Not yet due", "1 - 30", "31 - 60", "61 - 90", "91 - 120", "120+", "Last week total",
@@ -317,15 +416,40 @@ def ghi_risk(wb, kq: KetQuaFull, ngay_chot: dt.date) -> None:
                 o.alignment = Alignment(horizontal="center", vertical="top")
             elif ten in ("Trend (auto)", "Reason for late payment", "Required action"):
                 o.alignment = Alignment(vertical="top", wrap_text=True)
+            elif ten in ("Base level", "Final level", "Upgrade +1", "Straight to Red") or ten.startswith("T"):
+                o.alignment = Alignment(horizontal="center", vertical="top")
+        _o_link(ws.cell(row=h, column=vi_tri["Contract (PDF)"]), kq.rui_ro[h - 6].link_hd)
+        o = ws.cell(row=h, column=vi_tri["Reason last week"])
+        o.font = Font(name=th.PHONG_NOI_DUNG, size=10, italic=True, color="595959")
+        o.alignment = Alignment(vertical="top", wrap_text=True)
+        for ten in ("Signed contract (credit term file)", "No colour upgrade (credit term file)"):
+            ws.cell(row=h, column=vi_tri[ten]).alignment = Alignment(horizontal="center", vertical="top")
+    # WR-11: tham số X, Y, N (ô vàng) + chú thích màu, dòng 1–3 phía trên các cột màu
+    from .tindung import NGUONG_X, NGUONG_Y, SO_HD_TRE_NANG, TEN_MAU
+    c0 = vi_tri[COT_MAU_DAU]
+    for i, (nhan, v) in enumerate((("X: overdue ≥ (VND)", NGUONG_X), ("Y: new customer owes ≥ (VND)", NGUONG_Y),
+                                   ("N: late invoices ≥", SO_HD_TRE_NANG)), start=1):
+        ws.cell(row=i, column=c0, value=nhan).font = Font(name=th.PHONG_NOI_DUNG, size=9, bold=True)
+        o = ws.cell(row=i, column=c0 + 1, value=v)
+        o.number_format = "#,##0"
+        o.fill = PatternFill("solid", fgColor=th.VANG_CANH_BAO)
+        o.font = Font(name=th.PHONG_NOI_DUNG, size=10, bold=True)
+    ws.cell(row=1, column=c0 + 3, value="X, Y tạm theo bản thử W43 — chờ Head of FIN chốt.").font = Font(
+        name=th.PHONG_NOI_DUNG, size=9, italic=True, color="7F7F7F")
+    for i, ten in enumerate(TEN_MAU):
+        o = ws.cell(row=3, column=c0 + 3 + i, value=f"{i} {ten}")
+        o.fill = PatternFill("solid", fgColor=MAU_MUC[i])
+        o.font = Font(name=th.PHONG_NOI_DUNG, size=9, bold=True, color=th.TRANG if i == 4 else None)
+        o.alignment = Alignment(horizontal="center")
     if dong:
         cuoi = get_column_letter(len(COT_RISK))
-        cot_tier = get_column_letter(vi_tri["Risk Tier"])
+        cot_muc = get_column_letter(vi_tri["Final level"])
         vung = f"A6:{cuoi}{5 + len(dong)}"
-        ws.conditional_formatting.add(vung, FormulaRule(
-            formula=[f'OR(LEFT(${cot_tier}6,2)="N3",LEFT(${cot_tier}6,2)="N4")'],
-            fill=PatternFill("solid", fgColor=th.DO_CANH_BAO)))
-        ws.conditional_formatting.add(vung, FormulaRule(
-            formula=[f'LEFT(${cot_tier}6,2)="N2"'], fill=PatternFill("solid", fgColor=th.VANG_CANH_BAO)))
+        # WR-11 (CEO): cả hàng tô theo Final level. Risk Tier N0–N4 giữ nguyên (việc cần làm), không tô màu nữa.
+        for i in range(4, -1, -1):
+            ws.conditional_formatting.add(vung, FormulaRule(
+                formula=[f"${cot_muc}6={i}"], fill=PatternFill("solid", fgColor=MAU_MUC[i]),
+                font=Font(color=th.TRANG, bold=True) if i == 4 else None, stopIfTrue=True))
     ws.auto_filter.ref = f"A5:{get_column_letter(len(COT_RISK))}{5 + len(dong)}"
     if kq.khach_tra_xong:
         hang += 1
@@ -341,31 +465,61 @@ def ghi_risk(wb, kq: KetQuaFull, ngay_chot: dt.date) -> None:
 COT_CONTRACT = [("No.", "so", 6), ("Alert", "ten", 30), ("Code", "ten", 14), ("Customer's Name", "ten", 40),
                 ("Salesman", "ten", 22), ("Balance", "tien", 16), ("Contract No.", "ten", 16),
                 ("Credit Term", "ten", 24), ("Contract expiry", "ten", 13), ("Days left", "so", 9),
-                ("Note", "ten", 60)]
+                ("Note", "ten", 60), ("Contract (PDF)", "ten", 14)]
 
 
-def ghi_contracts(wb, canh_bao: List[dict], ngay_chot: dt.date) -> None:
-    """WR-08 (Chairman 13/10): cảnh báo hợp đồng / credit term đọc từ Client Master. Chỉ cảnh báo —
+def ghi_contracts(wb, canh_bao: List[dict], ngay_chot: dt.date, them_khach: str = "") -> None:
+    """WR-08 (user 13/10): cảnh báo hợp đồng / credit term đọc từ Client Master. Chỉ cảnh báo —
     hợp đồng hết hạn vẫn tính tuổi nợ theo term cũ; FIN sửa Client Master."""
     ws = wb.create_sheet(th.SHEET_CONTRACT)
-    _dau_trang(ws, "Contracts & Credit Terms", ngay_chot, "Alerts from Client Master")
-    ws["F3"] = ("Nguồn: sample/SAMPLE_credit_term_khach.xlsx (Client Master, FIN sửa lần cuối). Hợp đồng hết hạn "
+    _dau_trang(ws, "Contracts & Credit Terms", ngay_chot, "Alerts from the credit term file")
+    ws["F3"] = ("Nguồn: file credit term sample/SAMPLE_credit_term_khach.xlsx (FIN sửa lần cuối). Hợp đồng hết hạn "
                 "vẫn tính tuổi nợ theo term cũ.")
     ws["F3"].font = Font(name=th.PHONG_NOI_DUNG, size=9, italic=True, color="7F7F7F")
     dong = [[i, c["loai"], c["ma"], c["ten"], c["sales"], c["du_no"], c["so_hd"], c["term"], c["han_dung"],
-             c["con_lai"], c["ghi_chu"]] for i, c in enumerate(canh_bao, start=1)]
+             c["con_lai"], c["ghi_chu"], NHAN_LINK if la_link(c.get("link")) else ""]
+            for i, c in enumerate(canh_bao, start=1)]
     mau = [{"do": th.DO_CANH_BAO, "vang": th.VANG_CANH_BAO}.get(c["muc"]) for c in canh_bao]
     if not dong:
         ws["A6"] = "Không có cảnh báo hợp đồng / credit term tuần này."
         ws["A6"].font = Font(name=th.PHONG_NOI_DUNG, size=10, italic=True)
         return
-    bang(ws, 5, COT_CONTRACT, dong, tong=False, mau_dong=mau)
+    hang = bang(ws, 5, COT_CONTRACT, dong, tong=False, mau_dong=mau)
     for h in range(6, 6 + len(dong)):
         ws.cell(row=h, column=9).number_format = "dd/mm/yyyy"
         ws.cell(row=h, column=9).alignment = Alignment(horizontal="center", vertical="top")
         ws.cell(row=h, column=11).alignment = Alignment(vertical="top", wrap_text=True)
-    ws.freeze_panes = "E6"
+        _o_link(ws.cell(row=h, column=12), canh_bao[h - 6].get("link"))
     ws.auto_filter.ref = f"A5:{get_column_letter(len(COT_CONTRACT))}{5 + len(dong)}"
+    # WR-11 (FIN 27/10): khách đang nợ chưa có trong Client Master — 3 cột đầu xếp đúng thứ tự Client Master
+    # (Mã kh · Khách hàng · Sales phụ trách) để FIN copy một lần, dán vào cột Mã kh ở dòng trống đầu tiên
+    from .khachhang import LOAI_CHUA_MASTER
+    moi = [c for c in canh_bao if c["loai"] == LOAI_CHUA_MASTER]
+    if moi:
+        hang += 1
+        da = any(c.get("da_them") for c in moi)
+        ws.cell(row=hang, column=3, value=(f"New customers — added to the credit term file ({len(moi)})" if da else
+                                           f"New customers — NOT yet in the credit term file ({len(moi)})")).font = Font(
+            name=th.PHONG_TIEU_DE, size=11, bold=True, color=th.CAM)
+        # WR-12: tool tự thêm vào file credit term; không thêm được (file đang mở…) thì FIN vẫn dán được bảng này
+        ws.cell(row=hang + 1, column=3, value=(them_khach or "") + ("" if da else
+            " Muốn thêm ngay: chọn 3 cột Mã kh · Khách hàng · Sales phụ trách → Copy → dán vào ô Mã kh ở dòng trống "
+            "đầu tiên của file credit term.")).font = Font(name=th.PHONG_NOI_DUNG, size=9, italic=True, color="7F7F7F")
+        # ghi thẳng vào cột C–F (đúng dưới Code · Customer's Name · Salesman · Balance của bảng trên) để giữ độ
+        # rộng cột; cột A để trống nên dashboard không đọc nhầm thành cảnh báo
+        h0 = hang + 2
+        for j, t in enumerate(("Mã kh", "Khách hàng", "Sales phụ trách", "Dư nợ (tham khảo)"), start=3):
+            o = ws.cell(row=h0, column=j, value=t)
+            o.fill = PatternFill("solid", fgColor=th.TIM if j == 6 else th.CAM)
+            o.font = Font(name=th.PHONG_TIEU_DE, size=10, bold=True, color=th.TRANG)
+        for i, c in enumerate(moi, start=h0 + 1):
+            for j, v in enumerate((c["ma"], c["ten"], c["sales"], c["du_no"]), start=3):
+                o = ws.cell(row=i, column=j, value=v)
+                o.font = Font(name=th.PHONG_NOI_DUNG, size=10)
+                o.border = VIEN
+                if j == 6:
+                    o.number_format = TIEN
+    ws.freeze_panes = "E6"
 
 
 def ghi_payable(wb, kq: KetQuaFull, ngay_chot: dt.date, ky: str) -> None:
@@ -473,15 +627,16 @@ CACH_TINH = [
      "(credit balance) are not listed.", "Misa — Tổng hợp công nợ phải thu"),
     ("Receivables", "Ageing buckets", "Each invoice: due date = invoice date + credit term ('14 ngày của "
      "tháng tiếp theo' = 14th of the next month). A receipt that names invoice numbers in its "
-     "description ('theo HD 00001574, 00001419') pays those invoices; the rest of the money pays the "
-     "OLDEST open invoice first. Days overdue = period end − due date; the due date itself is still "
+     "description ('theo HD 00001574, 00001419') pays those invoices (an FX-difference voucher on the same "
+     "day goes with them); the rest of the money first pays invoices Misa (Bán hàng) marks 'Đã thanh toán' at "
+     "the period end, then the OLDEST open invoice (FIN 17/10, WR-09). Days overdue = period end − due date; the due date itself is still "
      "Current, overdue starts the next day. Buckets: Current, 1-30, 31-60, "
      "61-90, 91-120, 120+.", "Misa — Chi tiết công nợ phải thu (TK131) from 01/01/2022: Ngày hoá đơn, "
      "Số hoá đơn, PS Nợ, PS Có"),
     ("Receivables", "Hard-to-collect", "Whole balance in 120+ when FIN marked the customer "
      "'không có khả năng thu hồi' or the reason says 'khó đòi'.", "sample/ ghép khách · last report"),
-    ("Receivables", "Credit Term, Reason", "Carried from last week's report (as edited by "
-     "accounting).", "Report of last week in the workspace root"),
+    ("Receivables", "Credit Term", "Carried from last week's report (as edited by accounting) when Client "
+     "Master has none.", "Report of last week in the workspace root"),
     ("Receivables", "Salesman, Job Number", "Open jobs of the customer in SMS (A/R remain > 0), "
      "matched through the customer mapping file.", "SMS AR-AP · sample/ ghép khách"),
     ("AR Risk", "Opening / Increase / Decrease", "Opening and movements of the week from Misa. "
@@ -501,9 +656,12 @@ CACH_TINH = [
      "('15/9', 'tháng 9' = end of September, 'đầu tháng 9' = 10/9, 'giữa tháng 9' = 20/9) that is "
      "before the report date, and overdue did not go down vs last week. Counted like S1–S3 (Chairman "
      "13/10). Promise date is read by the tool from the reason; FIN may overwrite it.", "Receivables reason"),
-    ("Receivables", "Reason for late payment", "Written by sales/accounting. When empty, the tool "
-     "writes '[TỰ ĐỘNG] …' (grey italic) from the trend rules below; that text is ignored next week.",
-     "Last week's report · AR Risk Trend"),
+    ("Receivables", "Reason for late payment · Reason last week", "WR-11 (option 1): 'Reason for late payment' "
+     "starts EMPTY every new week — sales write this week's reason there. 'Reason last week (read only)' shows "
+     "what was written in last week's report. The tool writes no reason of its own any more (no '[TỰ ĐỘNG]'). "
+     "Re-running the same week keeps this week's reasons. Hard-to-collect customers keep FIN's declaration. "
+     "Summary lists, per salesman, overdue customers with no reason this week.",
+     "Last week's report · this week's report when re-run"),
     ("Receivables", "Salesman", "Full name as in SMS (CEO 08/10). Short names in old reports are "
      "converted (Hiếu → Trần Văn Hiếu, Hiếu 1 → Phạm Trần Hiếu …).", "SMS AR-AP · thuonghieu.py"),
     ("Receivables", "Rows under a customer (+ / 1 | 2)", "Click + (or the 2 button top-left) to open "
@@ -514,8 +672,8 @@ CACH_TINH = [
      "Tham_chieu_job_no_cu.xlsx) take that invoice's own bucket. Columns of the rows always add up "
      "to the customer row. (Used only when the Bán hàng file is missing.)", "SMS AR-AP"),
     ("Receivables", "Rows under a customer — from Misa (v0.6)", "One row per job of every invoice still "
-     "OWED in the books: amount = what is left on that invoice after receipts (a receipt naming the invoice "
-     "pays it, the rest pays the oldest first) — not the full invoice amount (WR-08: FIN had to fix 9 "
+     "OWED in the books: amount = what is left on that invoice after receipts (same rule as Ageing buckets) "
+     "— not the full invoice amount (WR-08: FIN had to fix 9 "
      "customers by hand in W41). Rows always add up to the customer Total. Job = 'Mã đối tượng THCP' of the "
      "invoice (Sổ chi tiết TK131); an invoice with several jobs is split pro rata. Invoices before this year: "
      "job from sample/Tham_chieu_job_no_cu.xlsx. Each row sits in the bucket of its own invoice due date. "
@@ -534,13 +692,15 @@ CACH_TINH = [
     ("AR Risk", "Formulas (WR-08)", "S1–S7, Signals, Risk Code, Risk Tier, CEO review, Trend, Required "
      "action are Excel formulas — the same as the Head of FIN's sheet. Reason for late payment is pulled "
      "from Receivables: write or change the reason there and the tier updates when the file is opened. "
-     "Money columns are values. A reason starting with [TỰ ĐỘNG] counts as no reason (S4).",
+     "Money columns are values. Empty reason (or '[TỰ ĐỘNG] …' in old reports) counts as no reason (S4); "
+     "the tier keywords then read 'Reason last week'.",
      "Head of FIN — sheet 'data W39 so W40'"),
-    ("Contracts", "Alerts (WR-08)", "Read from Client Master (sample/SAMPLE_credit_term_khach.xlsx, FIN has the "
+    ("Contracts", "Alerts (WR-08)", "Read from the credit term file (sample/SAMPLE_credit_term_khach.xlsx, FIN has the "
      "final edit): contract expired while the customer still owes (red) · expiring within 30 / 60 / 90 days "
-     "(30 = yellow) · customer owing with no credit term in Client Master (yellow) · credit term changed "
+     "(30 = yellow) · customer owing not in the credit term file yet (yellow; the tool adds them to the file itself, WR-12 — "
+     "list at the end of the sheet) · in the credit term file but no credit term (yellow) · credit term changed "
      "since last week (yellow). Expiry in use = renewal date + 12 months, else expiry date. An expired "
-     "contract keeps its old credit term for ageing (Head of FIN 13/10).", "Client Master"),
+     "contract keeps its old credit term for ageing (Head of FIN 13/10).", "Credit term file"),
     ("AR Risk", "Required action (N3)", "Shown as a sentence only. FIN checks and decides whether to stop "
      "service (Head of FIN 13/10).", "Head of FIN"),
     ("AR Risk", "Jobs by Salesman", "Only for customers with two or more salesmen: each salesman, the "
@@ -550,6 +710,31 @@ CACH_TINH = [
      "sample/ · last week's report"),
     ("Receivables", "Customers left out", "Balance below 1,000 VND (rounding residue) — listed in Review.",
      "Misa — Tổng hợp TK131"),
+    ("AR Risk", "Colour · Base level (WR-11)", "Oldest ageing bucket that still holds ≥ 1,000 VND: not overdue "
+     "0 green · 1-30 1 yellow · 31-60 2 orange · 61-90 3 red · 91-120 or 120+ 4 dark red (CEO 27/10).",
+     "Ageing buckets"),
+    ("AR Risk", "Colour · Upgrade +1 (T1–T4)", "One level up if AT LEAST ONE is true (never more than one): "
+     "T1 overdue ≥ X · T2 Total > credit limit (credit term file) · T3 ≥ N invoices paid more than 15 days late "
+     "in the last 6 months · T4 no signed contract in the credit term file, or new customer (no balance last week) "
+     "owing ≥ Y. X, Y, N sit in the yellow cells above the colour columns (provisional until the Head of FIN "
+     "confirms). 'No colour upgrade' ticked in the credit term file (good customer: holds cargo, ships regularly, "
+     "good record) cancels this step.", "Credit term file · Chi tiết TK131"),
+    ("AR Risk", "Colour · Straight to Red", "Promise not to pay / lost contact: level = max(base, 3). Read "
+     "from the reason (this week's, else last week's): mất liên lạc, không liên lạc được, hứa không trả, từ "
+     "chối thanh toán/trả, không chịu thanh toán/trả, bỏ trốn. 'No colour upgrade' does NOT cancel it.",
+     "Receivables reason"),
+    ("AR Risk", "Colour · Final level", "MIN(4, base + upgrade), or max(base, 3) when straight to red. The "
+     "whole row is coloured by it. Risk Tier N0–N4 stays as before (Required action, CEO review) but no "
+     "longer colours the row.", "AR Risk"),
+    ("AR Risk · Contracts", "Contract (PDF)", "'Mở hợp đồng' opens the contract file in the browser — the link "
+     "Sales/FIN paste in the credit term file, column 'Link hợp đồng' (http/https only).", "Credit term file"),
+    ("Receivables", "Locked past weeks (WR-12)", "Once next week's report exists, edits to an older week's report "
+     "are no longer read back: 'Reason last week' always shows what was written while that week was open.",
+     "_tool/so-ghi.json"),
+    ("AR Risk", "Late invoices >15d (6 months)", "Counted by the tool: invoices fully paid in the last 6 "
+     "months whose payment date is more than 15 days after the due date. Payment date = the receipt after "
+     "which the invoice is cleared, using the same receipt rule as Ageing buckets. Open invoices are not "
+     "counted here (they are in the ageing).", "Misa — Chi tiết TK131"),
     ("AR Risk", "Risk Tier", "0 no overdue → X reason mentions offset/payment on behalf → N4 reason "
      "mentions legal event (đang kiện, mất liên lạc, khó đòi, công nợ xấu, phá sản) → N3 any 120+ or "
      "≥ 2 signals (S1-S3 + S7) → N2 one signal → N1 otherwise.", "Rules of the chief accountant "

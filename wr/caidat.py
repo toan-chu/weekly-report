@@ -19,7 +19,7 @@ class ChuaDatThuMuc(Exception):
 
 MAC_DINH = {
     "workspace": "",                 # thư mục làm việc trên OneDrive
-    # Bố cục Chairman chốt 2026-10-06: gốc chứa báo cáo tuần, chỉ 2 ngăn con cho người
+    # Bố cục user chốt 2026-10-06: gốc chứa báo cáo tuần, chỉ 2 ngăn con cho người
     #   <gốc>/          báo cáo tuần tool sinh ra; tuần sau tool đọc lại bản mới nhất ở đây
     #   <gốc>/input/    3 file mỗi tuần (2 Misa + 1 SMS)
     #   <gốc>/sample/   file ghép khách SMS ↔ Misa và file KIEM_TRA

@@ -2,8 +2,8 @@
 
 Kiến trúc hiện tại. Mọi thay đổi ở tầng này phải vẽ ở đây TRƯỚC khi đổi mã.
 
-Cập nhật: 2026-10-08 (WR-04). Trạng thái: v0.4 — full credit report: phải thu tính tuổi
-từ ngày hoá đơn thật, thêm phải trả, dòng tiền, nhóm rủi ro, lịch sử tuần, cách tính.
+Cập nhật: 2026-10-27 (WR-12). Trạng thái: v0.7.1 — full credit report: phải thu tính tuổi
+từ ngày hoá đơn thật, phải trả, dòng tiền, nhóm rủi ro, hợp đồng (Client Master), lịch sử tuần, cách tính.
 
 ## Hai nơi, đừng nhầm
 
@@ -15,7 +15,7 @@ weekly-report/                           Cong-No-Workspace/
   runner.py  wr/  tools/  tests/           input/   mỗi tuần 4 file (xem dưới)
   template/   mẫu báo cáo chuẩn            sample/  file khai 1 lần: ghép khách, Master List
   settings.json  chỉ ghi đường dẫn         _tool/   (ẩn) sổ ghi, nhật ký, lưu trữ
-  handoff/    phòng bàn giao
+  handoff/    phòng bàn giao (chuẩn v2.0)
 ```
 Không còn nút "Chạy ngay": tool tự chạy khi đủ file; ép chạy sớm thì bấm Run trong
 Task Scheduler. Đường dẫn chỉ nằm trong settings.json của từng máy.
@@ -38,19 +38,30 @@ Không có file Chi tiết mà có file Tuổi nợ cũ → chạy luật v0.3 (
 ## Luồng chạy mỗi tuần
 
 ```
- input/ 4 file ──► nhận dạng theo NỘI DUNG (không tin tên file), ghép theo kỳ
+ input/ 6 file ──► nhận dạng theo NỘI DUNG (không tin tên file), ghép theo kỳ
  sample/ ghép khách, Master List ──► nhận dạng theo nội dung
  gốc/ báo cáo các tuần trước ──► đọc lại vào sổ ghi (bản người thắng bản máy)
                  │
    ① TIỀN mỗi khách   = Tổng hợp 131 (dư Nợ cuối kỳ). Luôn luôn.
    ② TUỔI             = Chi tiết 131: hoá đơn theo ngày hoá đơn; phiếu thu ghi số HĐ thì
-                         trừ đúng HĐ đó, còn lại trừ HĐ CŨ NHẤT trước; hạn = ngày HĐ + term
+                         trừ đúng HĐ đó (NVK tỷ giá cùng ngày gộp vào HĐ đó); còn lại trừ trước
+                         HĐ Misa ghi "Đã thanh toán", rồi HĐ CŨ NHẤT (WR-09); hạn = ngày HĐ + term
                          ("14 ngày của tháng tiếp theo" = ngày 14 tháng sau);
                          quá hạn từ HÔM SAU ngày đến hạn (FIN 08/10)
                          khó đòi (bảng ghép / lý do có "khó đòi") → cả số vào 120+
                          Chi tiết ≠ Tổng hợp → tiền theo Tổng hợp, ghi Review
    ③ JOB, SALESMAN    = SMS (qua bảng ghép) > tuần trước
-   ④ RỦI RO           = luật của chị KTT (S1..S6, N0..N4), so với tuần trước trong sổ ghi
+   ③b LÝ DO (PA1)     = tuần này: trống, trừ khi sổ ghi đã có trang của chính ngày chốt (chạy lại);
+                         tuần trước: trang trước trong sổ ghi → cột chỉ đọc
+   ④ RỦI RO           = luật của chị KTT (S1..S7, N0..N4), so với tuần trước trong sổ ghi
+   ④b MÀU (WR-11)     = Client Master đọc TRƯỚC khi tính (hạn mức, ✓ hợp đồng, không nâng hạng)
+                         + Chi tiết 131 (chitiet.hoa_don_tra_tre) → tindung.danh_gia_mau;
+                         AR Risk ghi cùng luật bằng công thức (ghifull.cong_thuc_mau), tô cả hàng
+   ④0 MẪU (WR-12, 28/10) = đầu lần chạy: file credit term thiếu cột / sheet tên cũ → khachhang.them_khach_moi(f, [])
+                         nâng mẫu (cùng điều kiện an toàn) rồi mới doc_master
+   ④c KHÁCH MỚI (WR-12) = khách đang nợ chưa có trong file credit term → khachhang.them_khach_moi: đọc cả file
+                         (doc_file), thêm dòng, sao lưu _tool/luu-tru, ghi lại theo mẫu mới (ghi_master) qua file tạm
+                         rồi os.replace; file đang mở (~$ hoặc không mở được để ghi) → bỏ qua, báo Contracts + Review
    ⑤ PHẢI TRẢ         = Tổng hợp 331: mọi vendor còn dư Có + vendor trả xong trong tuần
    ⑥ DÒNG TIỀN        = phiếu thu trong kỳ của Chi tiết 131 tách theo TK đối ứng
                          (112 ngân hàng, 111 tiền mặt, 331 cấn trừ, 515/635 tỷ giá, khác)
@@ -77,7 +88,8 @@ Excel ghi số, riêng AR Risk ghi công thức của kế toán trưởng và d
 tự tính lại S1–S6, Tier, Trend, Required action bằng JS. Cách tính viết bằng lời ở Methodology.
 WR-08 thêm: cột "Jobs by Salesman" ở AR Risk (`tindung.chia_theo_sales`); credit term đọc từ file
 mẫu trong `sample/` (`ghep.doc_credit_term`), file mẫu dựng bằng `wr/khachhang.py` (Client Master List);
-`khachhang.doc_master` + `canh_bao_hop_dong` → sheet Contracts (`ghifull.ghi_contracts`) + 5 chỉ số Summary
+`khachhang.doc_master` + `canh_bao_hop_dong` → sheet Contracts (WR-11: cuối sheet có bảng khách đang nợ
+chưa có trong Client Master, cột C–F, để FIN dán) (`ghifull.ghi_contracts`) + 5 chỉ số Summary
 (hd_het_han, hd_sap_het_30, khach_chua_term, term_doi, khach_chua_han_hd); dashboard đọc sheet Contracts. File Client Master ngoài `sample/`: `caidat.CauHinh.client_master` →
 `ghep.dat_file_master` (runner/kiemtra đặt trước khi chạy); `_cac_bang_term` chỉ đọc file đó khi có.
 
@@ -95,6 +107,8 @@ thêm cột Promise date của AR Risk khi lý do không có ngày.
 
 ## Sổ ghi (_tool/so-ghi.json)
 
+WR-12: runner.nap_ban_tay bỏ qua chỉnh sửa trên báo cáo của tuần đã có trang tuần sau (tuần đã chốt).
+
 Một trang cho mỗi ngày chốt: từng khách (số dư, 6 nhóm, lô nợ, term, salesman, job, lý do)
 + `lich_su_tuan` (các con số của sheet Summary từng tuần). Báo cáo ở thư mục gốc được đọc
 lại thành trang của đúng ngày chốt ghi trong file. Cùng ngày chốt: bản người làm (không có tab
@@ -109,4 +123,4 @@ cùng loại thì bản sửa sau cùng thắng.
 ## Ngoài phạm vi hiện tại
 
 Nợ vendor theo job/loại phí từ SMS (cần ghép vendor SMS ↔ Misa).
-Customer Master List từ SharePoint (sẽ nhận dạng khi có file mẫu). Power Automate gửi email.
+Power Automate gửi email.

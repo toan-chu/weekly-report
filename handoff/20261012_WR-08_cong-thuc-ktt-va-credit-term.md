@@ -1,13 +1,14 @@
-Mã:         WR-08
-Mạch:       WR — báo cáo công nợ phải thu hằng tuần
-Nối tiếp:   WR-06, WR-07
-Giao cho:   claude-logisticist   [COWORK-EXEC]
-Trạng thái: chờ-nghiệm-thu
-Vòng:       1/2
+Mã: WR-08
+Mạch: WR - báo cáo công nợ phải thu hằng tuần
+Nối tiếp: WR-06, WR-07
+Người làm: claude
+Người soát: codex
+Trạng thái: chờ-soát
+Vòng: 1/2
 
 ## ĐỀ BÀI
 
-**Mục tiêu nghiệp vụ** (Chairman, 2026-10-12)
+Kỳ vọng của user: (user, 2026-10-12)
 1. File Excel cuối có sẵn công thức của kế toán trưởng (bản W40 KTT gửi).
 2. Credit term từng khách: file mẫu FIN điền cho khách cũ + phiếu Sales điền cho khách mới;
    tham khảo credit-term-draft của KTT.
@@ -16,11 +17,15 @@ Vòng:       1/2
    người duyệt ngưng dịch vụ · khách nhiều Sales (Inter-Freight) phải thấy job nào của Sales nào.
 5. Chạy lại W41 ở workspace test, so với bản W41 "(human)" FIN đã sửa.
 
-**Ngoài phạm vi**
+Mục tiêu: File Excel mang công thức của kế toán trưởng, credit term từ Client Master, và trả lời các câu hỏi của CX về AR Risk.
+
+Ngoài phạm vi:
 - Khoá dịch vụ tự động — KTT 13/10: không làm, FIN tự quyết.
 
-**Kịch bản nghiệm thu**
-Chairman: chạy lại W41 ở workspace test, so bản human.
+Kế thừa: (phiếu mở trước v2.0, không ghi; xem phiếu ở trường Nối tiếp)
+
+Kịch bản test:
+user: chạy lại W41 ở workspace test, so bản human.
 
 ## TODO
 - [x] Dòng con = số còn nợ từng hoá đơn theo Chi tiết 131; job từ Sổ chi tiết 131 (chia theo tỷ lệ);
@@ -41,6 +46,7 @@ Chairman: chạy lại W41 ở workspace test, so bản human.
 
 ## AUDIT
 
+Báo cáo của người làm:
 ```
 python -m pytest -q          → 69 passed, 20 skipped (13/10)
 W41 workspace test           → 66 khách; phải thu 14.468.170.527; quá hạn 5.663.131.210;
@@ -54,13 +60,25 @@ Lệch còn lại (8 khách, nhỏ): KH00418 khó đòi (dòng nợ cũ giữ ch
 hoá đơn) · ILC (chia 777k) · SPA (dòng NVK tỷ giá, đã gắn nhãn) · AIRSPACE, KH00140 (làm tròn tỷ
 giá 150k / 23k) · DEALLOG (nhóm tuổi khác vì term).
 
-Ký nghiệm thu (Chairman): ____  [RUNTIME CHƯA KIỂM] trên máy Windows của FIN.
+Chờ kiểm trên máy thật: [RUNTIME UNVERIFIED] trên máy Windows của FIN.
+
+
+Việc trên máy thật còn chờ (chuyển từ mục "Đang treo" của STATE cũ, 2026-10-27):
+- Cài máy FIN kèm `.gitattributes`; đưa Client Master lên OneDrive và cho máy FIN đồng bộ file về máy.
+- Chạy WR-08 trên máy user rồi máy FIN [RUNTIME UNVERIFIED].
+- Dữ liệu: Sales điền ngày hết hạn hợp đồng (63 khách đang nợ còn trống), FIN điền term cho 22 khách đang nợ.
+
+Giả định kỹ thuật: (phiếu mở trước v2.0, chưa ghi theo khuôn ba dòng)
+
+Soát: chưa — chờ codex (phiếu chuyển từ chuẩn v1.1 sang v2.0 ở WR-10; các ô ký theo vai cũ không còn hiệu lực).
+Kết quả:
+-- claude - 2026-10-27 11:40 UTC+7
 
 ## HISTORY
 
 ### 2026-10-13
 Client Master List (file chung OneDrive) theo theme. Dashboard: tên ngắn trên nhãn biểu đồ. ATH hẹn
-"tháng 9" mà sang tháng 10 vẫn N2 → Chairman chọn A: thêm S7 lỡ hẹn (Promise date đọc từ lý do),
+"tháng 9" mà sang tháng 10 vẫn N2 → user chọn A: thêm S7 lỡ hẹn (Promise date đọc từ lý do),
 đếm như S1–S3. Chạy lại W41: ATH lên N3, nợ xấu 1.730.203.676 → 1.852.888.263 (16 khách). LibreOffice
 tính lại: 0 lỗi, nợ xấu theo công thức khớp số tool. Dashboard: ATH hiện S2 S6 S7, N3, 0 lỗi.
 Failure: công thức KTT coi mọi câu Sales ghi là đã giải trình, kể cả lời hẹn đã quá ngày.

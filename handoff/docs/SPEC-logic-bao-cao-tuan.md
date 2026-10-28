@@ -1,6 +1,6 @@
 # SPEC — Luật điền sheet Receivable
 
-Chốt ngày 2026-09-23 giữa Chairman, kế toán phụ trách công nợ và Claude.
+Chốt ngày 2026-09-23 giữa user, kế toán phụ trách công nợ và Claude.
 Cập nhật 2026-09-23 chiều: thêm mục 3b sau khi kế toán trả lời đợt 2.
 Rút ra từ 3 tuần dữ liệu thật W36, W37, W38 trong `fixtures/`.
 

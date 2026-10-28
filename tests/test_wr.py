@@ -11,7 +11,7 @@ import pytest
 
 GOC = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(GOC))
-FIX = GOC / "handoff" / "docs" / "fixtures"
+FIX = GOC / "tests" / "fixtures"
 
 from wr import baocao, misa  # noqa: E402
 from wr import soghi as sg  # noqa: E402
@@ -30,7 +30,7 @@ MAU = GOC / "template" / "Bang_cong_no_MAU_CHUAN.xlsx"
 CO_DU_LIEU_THAT = all(f.exists() for f in list(TH.values()) + list(TN.values()) + list(TAY.values()))
 can_du_lieu_that = pytest.mark.skipif(
     not CO_DU_LIEU_THAT,
-    reason="Không có dữ liệu thật trong handoff/docs/fixtures/ — đây là dữ liệu công nợ "
+    reason="Không có dữ liệu thật trong tests/fixtures/ — đây là dữ liệu công nợ "
            "của Trustana, không đi theo repo công khai. Chép vào đó thì các phép thử này chạy lại.",
 )
 

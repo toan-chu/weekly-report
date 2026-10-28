@@ -50,6 +50,10 @@ COT = [
 # v0.5 (WR-06): cột thêm khi có file Bán hàng — dư nợ Misa so với tổng job chưa thanh toán
 COT_DOI_CHIEU = ("Đối chiếu job (FIN)", 46)
 
+# WR-11 PA1: lý do Sales ghi ở báo cáo tuần trước — chỉ để đọc (nền xám). Cột "Reason for late payment"
+# để trống mỗi tuần mới cho Sales ghi lý do tuần này.
+COT_LY_DO_TRUOC = ("Reason last week (read only)", 50)
+
 # Dòng 1 công ty · 2 tên báo cáo · 3 ngày chốt · 4 tên bảng · 5 tên cột
 DONG_TIEU_DE = 5      # dòng chứa tên cột
 DONG_DAU_DU_LIEU = 6  # dòng dữ liệu đầu tiên
@@ -70,8 +74,8 @@ TEN_SALES_DAY_DU = {
     "tân": "Nguyễn Duy Tân",
 }
 
-# Lý do trễ hạn do tool tự viết khi Sales chưa ghi — đánh dấu để tuần sau không
-# nhầm là lời giải trình của Sales.
+# Bản cũ (tới v0.6.1) tự viết lý do có nhãn này khi Sales chưa ghi. Từ WR-11 không viết nữa (user 27/10:
+# "xoá toàn bộ chữ Tự động"); vẫn giữ nhãn để đọc báo cáo cũ thì coi câu đó như trống.
 NHAN_TU_DONG = "[TỰ ĐỘNG]"
 
 

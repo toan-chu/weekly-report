@@ -294,7 +294,7 @@ def ma_misa_cua(dong: DongSMS, bang: Optional[BangGhep], theo_ma: Dict[str, str]
 
 
 
-# --- v0.4: nợ cũ không có job trên SMS — FIN khai một lần (Chairman 08/10) ---------------
+# --- v0.4: nợ cũ không có job trên SMS — FIN khai một lần (user 08/10) ---------------
 
 SHEET_JOB_NO_CU = "Job cho nợ cũ"
 COT_JOB_NO_CU = ["Mã khách Misa", "Tên khách", "Số hoá đơn", "Ngày hoá đơn", "Còn nợ (VND)",

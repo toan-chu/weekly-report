@@ -1,6 +1,6 @@
 # NOTE — Kế toán trả lời, 2026-09-22
 
-Người trả lời: kế toán phụ trách công nợ. Hỏi qua Chairman.
+Người trả lời: kế toán phụ trách công nợ. Hỏi qua user.
 
 - **Chọn khách**: lấy khách có số dư bên Nợ của Số dư cuối kỳ trong file Tổng hợp.
   Khách trả trước không đưa vào, báo cáo này chỉ theo dõi khách cần phải thu.

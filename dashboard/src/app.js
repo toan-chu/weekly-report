@@ -3,7 +3,7 @@
    lý do trễ hạn trong sheet Receivables (cùng luật với sheet AR Risk / Methodology).
    Kiểu Looker Studio: mỗi thẻ chọn được kiểu biểu đồ hoặc bảng; bấm vào một phần biểu đồ
    để lọc (Sales, nhóm rủi ro, tuổi nợ).
-   WR-07 (Chairman 09/10): mỗi tab là MỘT TRANG riêng, không cuộn dài. Bấm một khách / một Sales
+   WR-07 (user 09/10): mỗi tab là MỘT TRANG riêng, không cuộn dài. Bấm một khách / một Sales
    thì vào trang chi tiết của họ (drill-through); bộ lọc giữ nguyên khi chuyển tab nên các tab khác
    chỉ còn phần liên quan. Địa chỉ trang nằm trên thanh địa chỉ (#sales?s=...) nên nút Back chạy. */
 (function () {
@@ -22,7 +22,7 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const BUCKETS = ["Current", "1 - 30", "31 - 60", "61 - 90", "91 - 120", "120+"];
   const BUCKET_VI = ["Chưa đến hạn", "Quá hạn 1–30 ngày", "31–60 ngày", "61–90 ngày", "91–120 ngày", "Trên 120 ngày"];
-  // LUẬT MÀU (Chairman 08/10): đỏ và các màu lân cận (cam, vàng cam) = TIÊU CỰC;
+  // LUẬT MÀU (user 08/10): đỏ và các màu lân cận (cam, vàng cam) = TIÊU CỰC;
   // xanh lá = TÍCH CỰC; xanh dương, tím = TRUNG TÍNH (chỉ để phân biệt, không khen chê).
   const POS = "#1baf7a", NEU = "#2a78d6", NEU2 = "#7a3fc2", NEG = "#e34948";
   // tuổi nợ: chưa đến hạn là tốt (xanh lá), càng quá hạn càng đỏ đậm
@@ -112,6 +112,8 @@
     // Receivables: dòng khách + dòng con (job) bắt đầu bằng └
     const R = rows(wb, "Receivables");
     const ri = findRow(R, (r) => r.includes("Code") && r.includes("Total"));
+    // WR-11 PA1: cột "Reason last week (read only)" — tìm theo tiêu đề (file cũ không có thì bỏ qua)
+    const iLw = (R[ri] || []).findIndex((v) => String(v ?? "").startsWith("Reason last week"));
     d.cust = [];
     let cur = null;
     for (let i = ri + 1; i < R.length; i++) {
@@ -125,7 +127,8 @@
       }
       if (!r[1] || typeof r[4] !== "number") continue;
       cur = { code: String(r[1]).trim(), name, term: r[3] || "", total: r[4], b: BUCKETS.map((_, k) => n0(r[5 + k])),
-              sales: r[11] || "", job: r[12] || "", reason: String(r[13] ?? ""), dc: String(r[14] ?? ""), kids: [], inv: [] };
+              sales: r[11] || "", job: r[12] || "", reason: String(r[13] ?? ""), dc: String(r[14] ?? ""),
+              reasonLw: iLw >= 0 ? String(r[iLw] ?? "") : "", kids: [], inv: [] };
       cur.overdue = cur.b.slice(1).reduce((a, b) => a + b, 0);
       cur.oldest = cur.b.reduce((m, v, k) => (v > 0.5 ? k : m), 0);
       d.cust.push(cur);
@@ -157,7 +160,7 @@
         const han = typeof r[8] === "number" ? ngayVN(new Date(Math.round((r[8] - 25569) * 864e5))) : String(r[8] ?? "");
         const a = { loai: String(r[1] || ""), code: String(r[2] ?? "").trim(), name: String(r[3] || ""), sales: String(r[4] || ""),
                     balance: n0(r[5]), hd: String(r[6] || ""), term: String(r[7] || ""), han, left: r[9], note: String(r[10] || "") };
-        a.muc = a.loai.startsWith("Hợp đồng đã hết hạn") ? "do" : /≤30|Chưa có credit|vừa đổi/.test(a.loai) ? "vang" : "";
+        a.muc = a.loai.startsWith("Hợp đồng đã hết hạn") ? "do" : /≤30|Chưa có credit|Chưa có trong (Client Master|file credit term)|vừa đổi/.test(a.loai) ? "vang" : "";
         d.contracts.push(a);
         const c = byCode[a.code.toUpperCase()]; if (c) (c.alerts = c.alerts || []).push(a);
       }
@@ -201,7 +204,7 @@
     return d;
   }
 
-  // S7 lỡ hẹn (Chairman 13/10): ngày hẹn trả muộn nhất ghi trong lý do — cùng luật với tindung.ngay_hen
+  // S7 lỡ hẹn (user 13/10): ngày hẹn trả muộn nhất ghi trong lý do — cùng luật với tindung.ngay_hen
   let ASOF = new Date();
   function ngayHen(text) {
     let t = String(text || "").toLowerCase(); const ra = [];
@@ -254,8 +257,10 @@
 
   function tierOf(c) {
     const reason = c.reason.startsWith(AUTO) ? "" : c.reason;
-    const low = reason.toLowerCase();
-    c.hen = ngayHen(reason) || c.pdFile || null;
+    // WR-11 PA1: Sales chưa ghi lý do tuần này thì xét nhóm (pháp lý, cấn trừ, ngày hẹn) theo lý do tuần trước
+    const hieuLuc = reason.trim() ? reason : c.reasonLw.startsWith(AUTO) ? "" : c.reasonLw;
+    const low = hieuLuc.toLowerCase();
+    c.hen = ngayHen(hieuLuc) || c.pdFile || null;
     c.s = signals(c, reason);
     const sig = c.s[0] + c.s[1] + c.s[2] + c.s[6];
     let t;
@@ -271,7 +276,9 @@
     c.action = c.tierKey === "N4" ? "Chuyển hồ sơ thu hồi. Rà soát chứng từ gốc để xét trích dự phòng theo TT48/2019."
       : c.tierKey === "N3" ? (c.b[5] > 0.5 ? "Dừng cấp dịch vụ mới. Chốt công văn đòi nợ có xác nhận gửi. Kế toán trưởng ký xác nhận phân nhóm."
         : "Dừng cấp dịch vụ mới. Yêu cầu cam kết NGÀY cụ thể bằng văn bản trong 7 ngày.") : "";
-    c.reasonShown = reason || (c.trend ? AUTO + " " + c.trend : c.reason);
+    // WR-11 (user 27/10): không hiện câu "[TỰ ĐỘNG] …" nữa
+    c.reasonShown = reason || (c.reasonLw && !c.reasonLw.startsWith(AUTO) ? "Chưa có lý do tuần này · tuần trước: " + c.reasonLw
+      : "Chưa có lý do tuần này");
     c.isAuto = !reason;
   }
 

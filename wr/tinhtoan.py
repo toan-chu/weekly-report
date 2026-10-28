@@ -30,6 +30,7 @@ class DongBaoCao:
     salesman: str = ""
     ghi_chu: str = ""
     ly_do: str = ""
+    ly_do_truoc: str = ""           # WR-11 PA1: lý do Sales ghi ở báo cáo tuần trước (chỉ để đọc)
     nguon: str = ""                 # misa | so-ghi | khoi-dong-lanh | ngoai-le
     cho_xem_lai: List[str] = field(default_factory=list)      # vấn đề về SỐ
     thieu_thong_tin: List[str] = field(default_factory=list)  # thiếu cột người điền

@@ -1,6 +1,6 @@
 # FIN trả lời về file ghép khách SMS ↔ Misa — 2026-10-06
 
-Nguồn: Chairman chuyển lời FIN (Ranee) trong hội thoại 2026-10-06.
+Nguồn: user chuyển lời FIN (Ranee) trong hội thoại 2026-10-06.
 Áp cho: `wr/ghep.py`, phiếu WR-03. Còn đúng tới khi FIN đổi mã khách trên SMS.
 
 1. **Một mã SMS ứng với hai khách Misa thì theo Misa.** SMS chưa đổi mã sang

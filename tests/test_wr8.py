@@ -114,7 +114,7 @@ def test_lan_dau_tool_tao_client_master(tmp_path):
 
 
 def test_lo_hen_s7_day_len_no_xau():
-    """Chairman 13/10 (phương án A): lý do hẹn 'tháng 9' mà báo cáo đã sang tháng 10, quá hạn không giảm
+    """user 13/10 (phương án A): lý do hẹn 'tháng 9' mà báo cáo đã sang tháng 10, quá hạn không giảm
     → thêm dấu hiệu S7; cùng S2 thành 2 dấu hiệu → N3 (ca ATH W41)."""
     import datetime as dt
     chot = dt.date(2026, 10, 10)
@@ -137,7 +137,7 @@ def test_lo_hen_s7_day_len_no_xau():
 
 
 def test_canh_bao_hop_dong_tu_client_master(tmp_path):
-    """Chairman 13/10: báo cáo tuần cảnh báo hợp đồng hết hạn còn nợ, sắp hết hạn, chưa có term, term vừa đổi.
+    """user 13/10: báo cáo tuần cảnh báo hợp đồng hết hạn còn nợ, sắp hết hạn, chưa có term, term vừa đổi.
     Hợp đồng hết hạn KHÔNG đổi term (vẫn tính theo hợp đồng cũ)."""
     import datetime as dt
     from wr import khachhang as kh
@@ -160,7 +160,8 @@ def test_canh_bao_hop_dong_tu_client_master(tmp_path):
     assert ("A", "Hợp đồng đã hết hạn") in loai and "phát sinh 50" in cb[0]["ghi_chu"]
     assert ("B", "Sắp hết hạn ≤30 ngày") in loai, "sắp hết hạn: báo cả khách không còn nợ"
     assert ("C", "Credit term vừa đổi") in loai
-    assert ("D", "Chưa có credit term") in loai
+    # WR-11 (FIN 27/10): khách đang nợ mà chưa có dòng nào trong Client Master tách thành loại riêng
+    assert ("D", "Chưa có trong file credit term") in loai
     assert not any(c["ma"] == "E" for c in cb), "hết hạn mà không còn nợ thì không báo"
 
 

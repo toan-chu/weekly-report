@@ -4,16 +4,27 @@ __pycache__/
 *.pyc
 .pytest_cache/
 chay_nen.bat
-.pytest_cache/
 *.tmp
 
 # Dữ liệu công nợ thật dùng để chạy phép thử — không đưa lên repo công khai.
-# Đặt lại vào handoff/docs/fixtures/ thì các phép thử đối chiếu tự chạy lại.
-handoff/docs/fixtures/
+# Đặt lại vào tests/fixtures/ thì các phép thử đối chiếu tự chạy lại.
+tests/fixtures/
 
 # File Excel thật (Misa, SMS, ghép khách, bản final) đặt tạm để phân tích — không lên repo.
 handoff/docs/**/*.xlsx
+handoff/archive/**/*.xlsx
 _to_delete/
 
 # Workspace chạy thử đặt trong repo — dữ liệu thật, không lên git
 Cong-No-Workspace/
+
+# WR-11 (user 27/10): KHÔNG đưa file Excel nào lên git — mọi .xlsx/.xlsm/.xls ở mọi thư mục.
+# Ngoại lệ duy nhất: mẫu chuẩn sheet Receivables, tool cần nó để chạy trên máy FIN sau khi pull.
+*.xlsx
+*.xlsm
+*.xls
+!template/Bang_cong_no_MAU_CHUAN.xlsx
+# Workspace chạy thử (tên nào bắt đầu bằng Cong-No-Workspace, ở bất kỳ đâu): sổ ghi, nhật ký, báo cáo thật
+Cong-No-Workspace*/
+_tool/
+*.log

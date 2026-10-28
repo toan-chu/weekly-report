@@ -79,11 +79,18 @@ def ghi_bao_cao(
     n_cot = len(th.COT) + (1 if co_doi_chieu else 0)
     if co_doi_chieu:
         _cot_doi_chieu(ws)
+    # WR-11 PA1: cột lý do tuần trước, ngay sau cột cuối — chỉ để đọc
+    n_cot += 1
+    c_lw = n_cot
+    o = ws.cell(row=th.DONG_TIEU_DE, column=c_lw, value=th.COT_LY_DO_TRUOC[0])
+    o._style = copy(ws.cell(row=th.DONG_TIEU_DE, column=len(th.COT))._style)
+    o.fill = PatternFill("solid", fgColor="7F7F7F")
+    ws.column_dimensions[get_column_letter(c_lw)].width = th.COT_LY_DO_TRUOC[1]
     hang = th.DONG_DAU_DU_LIEU
     for stt, d in enumerate(dong, start=1):
         gia_tri = [stt, d.ma, d.ten, d.credit_term, d.total] + \
                   [v if abs(v) > 0.4 else None for v in d.nhom] + \
-                  [d.salesman, d.job, d.ly_do or d.ly_do_tu_dong]
+                  [d.salesman, d.job, d.ly_do]
         for cot, v in enumerate(gia_tri, start=1):
             o = ws.cell(row=hang, column=cot, value=v)
             o.font = Font(name=th.PHONG_NOI_DUNG, size=10)
@@ -96,9 +103,11 @@ def ghi_bao_cao(
             else:
                 # Job Number không xuống dòng (danh sách job đầy đủ nằm ở các dòng con)
                 o.alignment = Alignment(vertical="top", wrap_text=cot == 14)
-        if not d.ly_do and d.ly_do_tu_dong:
-            ws.cell(row=hang, column=14).font = Font(name=th.PHONG_NOI_DUNG, size=10, italic=True,
-                                                     color="7F7F7F")
+        o = ws.cell(row=hang, column=c_lw, value=d.ly_do_truoc or None)
+        o.font = Font(name=th.PHONG_NOI_DUNG, size=10, italic=True, color="595959")
+        o.fill = PatternFill("solid", fgColor=th.XAM_NHAT)
+        o.border = kieu_vien
+        o.alignment = Alignment(vertical="top", wrap_text=True)
         if d.cho_xem_lai:
             mau = (th.DO_CANH_BAO if d.nguon in {"khoi-dong-lanh", "ngoai-le", "uoc-tinh"}
                    else th.VANG_CANH_BAO)
@@ -131,6 +140,17 @@ def ghi_bao_cao(
     ws.sheet_properties.outlinePr = Outline(summaryBelow=False, summaryRight=True)
 
     ws.auto_filter.ref = f"A{th.DONG_TIEU_DE}:{get_column_letter(n_cot)}{hang_tong - 1}"
+    # WR-12 (user 27/10: "cột previous week bị khoá"): gõ vào ô lý do tuần trước thì Excel báo lỗi và không nhận.
+    # Không khoá sheet bằng mật khẩu (khoá sheet thì không bấm gập/mở được dòng job). Dán đè vẫn lọt, nhưng tool không
+    # bao giờ đọc lại cột này — lý do tuần trước luôn lấy từ báo cáo tuần trước (đã chốt, xem runner.nap_ban_tay).
+    if hang_tong > th.DONG_DAU_DU_LIEU:
+        from openpyxl.worksheet.datavalidation import DataValidation
+        dv = DataValidation(type="custom", formula1="FALSE", allow_blank=False, showErrorMessage=True,
+                            errorStyle="stop", errorTitle="Chỉ để đọc",
+                            error="Lý do tuần trước đã chốt. Ghi lý do tuần này ở cột Reason for late payment.")
+        cl = get_column_letter(c_lw)
+        dv.add(f"{cl}{th.DONG_DAU_DU_LIEU}:{cl}{hang_tong - 1}")
+        ws.add_data_validation(dv)
     _ghi_sheet_xem_lai(wb, dong, ngay_chot, tong_misa, doi_chieu or {})
     if them_sheet:
         them_sheet(wb)
@@ -541,8 +561,9 @@ def doc_bao_cao(duong_dan: Path) -> Dict[str, sg.HoSoKhach]:
             cot["job"] = c.column
         elif "ghi chú" in ten or ten in ("comment", "notes", "note"):
             cot["ghi_chu"] = c.column
-        elif "lý do" in ten or "reason" in ten:
-            cot["ly_do"] = c.column
+        elif ("lý do" in ten or "reason" in ten) and "ly_do" not in cot \
+                and "last week" not in ten and "tuần trước" not in ten:
+            cot["ly_do"] = c.column      # WR-11: bỏ qua cột "Reason last week" (chỉ để đọc)
 
     ra: Dict[str, sg.HoSoKhach] = {}
     for r in range(dong_tieu_de + 1, ws.max_row + 1):
