@@ -140,13 +140,14 @@ def test_tha_6_file_ra_cot_doi_chieu_va_review(ws, monkeypatch):
     assert all(x.name.startswith("[DONE]") for x in ws.vao.glob("*.xlsx"))
     wb = openpyxl.load_workbook(next(ws.ra.glob("2026_W40_*.xlsx")))
     rec = wb[th.SHEET_BANG]
-    assert rec.cell(5, 15).value == th.COT_DOI_CHIEU[0]
+    DC = len(th.COT) + 1          # cột Đối chiếu ngay sau cột cuối (P từ WR-12)
+    assert rec.cell(5, DC).value == th.COT_DOI_CHIEU[0]
     hang = {rec.cell(r, 2).value: r for r in range(6, rec.max_row + 1) if rec.cell(r, 2).value}
-    assert rec.cell(hang["KA"], 15).value == "Khớp"
-    o = rec.cell(hang["KB"], 15)
+    assert rec.cell(hang["KA"], DC).value == "Khớp"
+    o = rec.cell(hang["KB"], DC)
     assert o.value.startswith("ĐỎ") and o.fill.fgColor.rgb.endswith("F8CBCB")
     assert rec.cell(hang["KA"] + 1, 3).value.strip().startswith("└ EXSANA26080001 · HĐ 00000001")
-    assert rec.cell(hang["KA"] + 1, 15).value == "Chưa thanh toán"
+    assert rec.cell(hang["KA"] + 1, DC).value == "Chưa thanh toán"
     assert rec.cell(hang["KA"] + 1, 12).value == "Lê Thị Hằng", "sales của job lấy từ SMS"
     chu = " ".join(str(c) for r in wb[th.SHEET_REVIEW].iter_rows(values_only=True) for c in r if c)
     assert "ĐỎ — tổng job" in chu and "CÔNG TY D" in chu and "TÍM" in chu and "CÔNG TY LẠ" in chu

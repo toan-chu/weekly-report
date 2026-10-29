@@ -144,7 +144,7 @@ def _sua_ly_do(f: Path, ma: str, chu: str) -> None:
     sh = wb[th.SHEET_BANG]
     for r in range(6, sh.max_row + 1):
         if sh.cell(r, 2).value == ma:
-            sh.cell(r, 14, value=chu)
+            sh.cell(r, th.COT_LY_DO_NAY, value=chu)
     wb.save(f)
 
 
@@ -168,7 +168,7 @@ def test_pa1_ly_do_tuan_nay_trong_tuan_truoc_chi_doc_va_chay_lai_giu_ly_do(ws):
     sh = openpyxl.load_workbook(w41)[th.SHEET_BANG]
     c_lw, _ = _cot(sh, th.COT_LY_DO_TRUOC[0])
     ka = next(r for r in range(6, sh.max_row + 1) if sh.cell(r, 2).value == "KA")
-    assert sh.cell(ka, 14).value is None, "tuần mới: ô lý do tuần này để trống cho Sales ghi"
+    assert sh.cell(ka, th.COT_LY_DO_NAY).value is None, "tuần mới: ô lý do tuần này để trống cho Sales ghi"
     assert sh.cell(ka, c_lw).value == "Khách hẹn trả 15/10", "lý do tuần trước hiện ở cột chỉ đọc"
     risk = openpyxl.load_workbook(w41)[th.SHEET_RISK]
     c_pd, h = _cot(risk, "Promise date")
@@ -184,7 +184,7 @@ def test_pa1_ly_do_tuan_nay_trong_tuan_truoc_chi_doc_va_chay_lai_giu_ly_do(ws):
     lai = next(ws.ra.glob("2026_W41_*chay lai*.xlsx"))
     sh = openpyxl.load_workbook(lai)[th.SHEET_BANG]
     ka = next(r for r in range(6, sh.max_row + 1) if sh.cell(r, 2).value == "KA")
-    assert sh.cell(ka, 14).value == "Đã gửi công văn, khách xin trả 30/10"
+    assert sh.cell(ka, th.COT_LY_DO_NAY).value == "Đã gửi công văn, khách xin trả 30/10"
     assert sh.cell(ka, c_lw).value == "Khách hẹn trả 15/10"
 
 
@@ -230,3 +230,16 @@ def test_cong_thuc_mau_trong_excel_khop_python(ws, tmp_path):
     sm = {r[5]: r for r in wb[th.SHEET_SUMMARY].iter_rows(min_row=20, values_only=True) if r and r[5]}
     for i in range(5):
         assert muc.count(i) == (sm[f"mau_{i}"][2] or 0), f"mức {i}: công thức Excel = tool"
+
+
+def test_to_mau_co_dieu_kien_ghi_bgcolor_cho_excel(ws):
+    """Lỗi chạy lại W43 trên máy FIN (29/10): CF chỉ ghi fgColor → Excel không tô màu. Excel đọc nền CF ở bgColor."""
+    import re
+    import zipfile
+    _tha_4_file(ws, 40)
+    assert runner.quet_thu_muc(ws) == 1
+    f = next(ws.ra.glob("2026_W40_*.xlsx"))
+    st = zipfile.ZipFile(f).read("xl/styles.xml").decode("utf-8")
+    dxf = re.findall(r"<dxf>.*?</dxf>", re.search(r"<dxfs.*?</dxfs>", st, re.S).group(0), re.S)
+    nen = [d for d in dxf if "<fill>" in d]
+    assert nen and all("bgColor" in d for d in nen), "mọi nền định dạng có điều kiện phải có bgColor"

@@ -44,15 +44,18 @@ COT = [
     ("120+", "tien", 15),
     ("Salesman", "ten", 24),
     ("Job Number", "ten", 30),
+    ("Reason last week (read only)", "ten", 40),   # WR-12 (user 29/10): tuần trước bên TRÁI, tuần này bên phải
     ("Reason for late payment", "ten", 60),
 ]
+COT_LY_DO_TRUOC_SO = 14   # cột N: lý do tuần trước (chỉ đọc)
+COT_LY_DO_NAY = 15        # cột O: lý do tuần này (Sales ghi)
 
 # v0.5 (WR-06): cột thêm khi có file Bán hàng — dư nợ Misa so với tổng job chưa thanh toán
 COT_DOI_CHIEU = ("Đối chiếu job (FIN)", 46)
 
 # WR-11 PA1: lý do Sales ghi ở báo cáo tuần trước — chỉ để đọc (nền xám). Cột "Reason for late payment"
 # để trống mỗi tuần mới cho Sales ghi lý do tuần này.
-COT_LY_DO_TRUOC = ("Reason last week (read only)", 50)
+COT_LY_DO_TRUOC = ("Reason last week (read only)", 40)
 
 # Dòng 1 công ty · 2 tên báo cáo · 3 ngày chốt · 4 tên bảng · 5 tên cột
 DONG_TIEU_DE = 5      # dòng chứa tên cột
@@ -91,3 +94,11 @@ def ten_sales(ten: str) -> str:
         if x not in phan:
             phan.append(x)
     return ", ".join(phan)
+
+
+
+def nen_cf(mau: str):
+    """Nền cho định dạng có điều kiện (Conditional Formatting). Excel đọc màu nền của CF ở bgColor, không phải fgColor
+    như ô thường — chỉ ghi fgColor thì Excel không tô gì (lỗi W43 chạy lại 29/10). Ghi cả hai cho Excel lẫn LibreOffice."""
+    from openpyxl.styles import PatternFill
+    return PatternFill(fill_type="solid", fgColor=mau, bgColor=mau)

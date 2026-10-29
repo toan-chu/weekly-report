@@ -276,8 +276,9 @@ COT_RISK = [
     ("Last week total", "tien", 15), ("Last week overdue", "tien", 15), ("Last week 61+", "tien", 15),
     ("S1", "so", 5), ("S2", "so", 5), ("S3", "so", 5), ("S4", "so", 5), ("S5", "so", 5), ("S6", "so", 5),
     ("Promise date", "ten", 11), ("S7", "so", 5), ("Signals (S1-S3, S7)", "so", 10), ("Risk Code", "ten", 14), ("Risk Tier", "ten", 26),
-    ("CEO review", "ten", 9), ("Trend (auto)", "ten", 50), ("Reason for late payment", "ten", 36),
-    ("Reason last week", "ten", 36),       # WR-11 PA1: lý do Sales ghi tuần trước (chỉ để đọc)
+    ("CEO review", "ten", 9), ("Trend (auto)", "ten", 50),
+    ("Reason last week", "ten", 36),       # WR-11 PA1: lý do Sales ghi tuần trước (chỉ để đọc) — bên trái tuần này
+    ("Reason for late payment", "ten", 36),
     ("Required action", "ten", 40), ("Contract (PDF)", "ten", 14), ("Job Number", "ten", 30),
     # WR-11 (CEO): màu theo tuổi nợ + nâng hạng. 4 cột dữ liệu (tool ghi số) rồi các cột công thức.
     ("Credit limit (credit term file)", "tien", 15), ("Late invoices >15d (6 months)", "so", 10),
@@ -288,7 +289,7 @@ COT_RISK = [
 ]
 COT_MAU_DAU = "Base level"
 # WR-11: màu tô cả hàng ở AR Risk theo Final level (0 xanh lá · 1 vàng · 2 cam · 3 đỏ · 4 đỏ đậm)
-MAU_MUC = ("E2EFDA", "FFF2CC", "FCE4D6", "F8CBAD", "C00000")
+MAU_MUC = ("C6EFCE", "FFEB9C", "F8CBAD", "FF7C80", "C00000")   # đúng bảng màu Head FIN dùng ở bản thử W43
 
 
 def cong_thuc_risk(h: int, ngay_chot: Optional[dt.date] = None) -> dict:
@@ -308,6 +309,7 @@ def cong_thuc_risk(h: int, ngay_chot: Optional[dt.date] = None) -> dict:
     LD, TIER = L["Reason for late payment"], L["Risk Tier"]
     nhan = th_.NHAN_TU_DONG
     LW = L["Reason last week"]
+    _ld = get_column_letter(th.COT_LY_DO_NAY)          # cột lý do tuần này ở Receivables (O từ WR-12)
     # lý do để xét nhóm: lý do tuần này; Sales chưa ghi (S4) thì lý do tuần trước (WR-11 PA1)
     goc = f'IF({S4}=1,{LW},{LD})'
     tim = lambda ds: "OR(" + ",".join(f'ISNUMBER(SEARCH("{t}",{goc}))' for t in ds) + ")"
@@ -338,7 +340,7 @@ def cong_thuc_risk(h: int, ngay_chot: Optional[dt.date] = None) -> dict:
                          f'&IF({S6}=1,"Toàn bộ dư nợ đã quá hạn. ","")&IF({b5}>0.5,"Có "&TEXT({b5},"#,##0")&" nằm ở '
                          f'nhóm trên 120 ngày. ","")&IF({S5}=1,"Chưa có điều khoản thanh toán nên chưa xác định chắc '
                          f'chắn được quá hạn. ","")&IF({S4}=1,"CHƯA CÓ GIẢI TRÌNH TỪ SALES. ",""))'),
-        "Reason for late payment": (f"=IFERROR(INDEX('{th.SHEET_BANG}'!$N:$N,MATCH($B{h},'{th.SHEET_BANG}'!$B:$B,0))"
+        "Reason for late payment": (f"=IFERROR(INDEX('{th.SHEET_BANG}'!${_ld}:${_ld},MATCH($B{h},'{th.SHEET_BANG}'!$B:$B,0))"
                                     f'&"","")'),
         "Required action": (f'=IF(LEFT({TIER},2)="N4","Chuyển hồ sơ thu hồi. Rà soát chứng từ gốc để xét trích dự '
                             f'phòng theo TT48/2019.",IF(LEFT({TIER},2)="N3",IF({b5}>0.5,"Dừng cấp dịch vụ mới. Chốt '
@@ -395,7 +397,7 @@ def ghi_risk(wb, kq: KetQuaFull, ngay_chot: dt.date) -> None:
         dong.append([i, r.ma, r.ten, r.credit_term, r.salesman, r.chia_sales, r.dau_ky, r.tang, r.giam,
                      r.cuoi_ky, r.nhap_bo_sung, *r.nhom, r.qua_han, r.tt_total, r.tt_qua_han, r.tt_61, *r.s, r.ngay_hen, r.s7,
                      r.so_dau_hieu, r.ma_dau_hieu, r.nhom_rui_ro, "Yes" if r.ceo else "",
-                     r.xu_huong, r.ly_do, r.ly_do_truoc, r.viec_can_lam, NHAN_LINK if la_link(r.link_hd) else "", r.job,
+                     r.xu_huong, r.ly_do_truoc, r.ly_do, r.viec_can_lam, NHAN_LINK if la_link(r.link_hd) else "", r.job,
                      r.han_muc, r.so_hd_tre, {True: "Yes", False: "No"}.get(r.co_hd, ""),
                      "Yes" if r.khong_nang else "", r.muc_goc, *r.tieu_chi, r.nang_thang, r.nang, r.muc, r.mau])
     hang = bang(ws, 5, COT_RISK, dong)
@@ -448,7 +450,7 @@ def ghi_risk(wb, kq: KetQuaFull, ngay_chot: dt.date) -> None:
         # WR-11 (CEO): cả hàng tô theo Final level. Risk Tier N0–N4 giữ nguyên (việc cần làm), không tô màu nữa.
         for i in range(4, -1, -1):
             ws.conditional_formatting.add(vung, FormulaRule(
-                formula=[f"${cot_muc}6={i}"], fill=PatternFill("solid", fgColor=MAU_MUC[i]),
+                formula=[f"${cot_muc}6={i}"], fill=th.nen_cf(MAU_MUC[i]),
                 font=Font(color=th.TRANG, bold=True) if i == 4 else None, stopIfTrue=True))
     ws.auto_filter.ref = f"A5:{get_column_letter(len(COT_RISK))}{5 + len(dong)}"
     if kq.khach_tra_xong:

@@ -128,9 +128,36 @@ Làm hỏng thử: tắt bước nâng mẫu đầu lần chạy → test_file_m
 ```
 Tuần không có khách mới và file đã đúng mẫu: tool không ghi file, không tạo bản sao lưu (phép thử kiểm giờ sửa file).
 
+Bổ sung 2026-10-29 — user chạy lại W43 trên máy FIN (file `handoff/docs/2026_W43_… (chay lai 29-10 14h01).xlsx`):
+- Đạt: 5 khách mới tự vào file credit term + nâng mẫu (Review ghi "Đã nâng … thêm: Link hợp đồng, Hạn mức nợ (VND),
+  Không nâng hạng màu, tên sheet 'Credit term'"), Contracts "New customers — added … (5)", phải thu 14.324.678.762,
+  lý do tuần này 32 / tuần trước 29, "[TỰ ĐỘNG]" 0, Final level 0:3 · 1:13 · 2:21 · 3:6 · 4:18 (LibreOffice, 0 ô lỗi).
+- HỎNG: Excel không tô màu hàng AR Risk. Nguyên nhân: nền của định dạng có điều kiện chỉ ghi fgColor; Excel đọc bgColor
+  (đối chiếu styles.xml của bản v2 Head FIN làm bằng Excel: `<patternFill><bgColor rgb="FFC00000"/>`). Hàng Đỏ đậm còn
+  chữ trắng trên nền trắng. Cùng lỗi ở tô màu file credit term (ô vàng, trạng thái đỏ) từ WR-08.
+- Sửa: `thuonghieu.nen_cf` ghi cả fgColor + bgColor, dùng ở `ghifull` (AR Risk) và `khachhang` (file credit term); bảng
+  màu theo đúng bản Head FIN (C6EFCE · FFEB9C · F8CBAD · FF7C80 · C00000). Phép thử mới `test_to_mau_co_dieu_kien_ghi_bgcolor_cho_excel`.
+```
+$ python3 -B -m pytest -p no:cacheprovider → 88 passed, 20 skipped
+Làm hỏng thử: nen_cf chỉ ghi fgColor → test_to_mau_co_dieu_kien… ĐỎ ("mọi nền định dạng có điều kiện phải có bgColor"); trả lại → xanh
+```
+[RUNTIME UNVERIFIED] màu hiện trong Excel thật — chờ user chạy lại trên máy FIN.
+
+Bổ sung 2026-10-29 (user: "Cột lý do tuần trước nằm bên trái, bên phải là reason tuần này"):
+- Receivables: N = Reason last week (read only), O = Reason for late payment, P = Đối chiếu job (FIN) (`th.COT`,
+  `th.COT_LY_DO_TRUOC_SO`, `th.COT_LY_DO_NAY`). AR Risk: "Reason last week" đứng trước "Reason for late payment";
+  công thức lấy lý do đổi `$N:$N` → `$O:$O`. Dashboard tìm cột Receivables theo tiêu đề (file cũ vẫn đọc được).
+- Hàng mức 4 "mất chữ" là chữ trắng (CF) trên nền không tô — cùng lỗi bgColor ở trên.
+```
+$ python3 -B -m pytest -p no:cacheprovider → 88 passed, 20 skipped (sửa test_wr3/4/6/8/11 tìm cột theo hằng số)
+W43 thật (máy ảo): Receivables N/O/P = Reason last week · Reason for late payment · Đối chiếu job (FIN);
+  AR Risk lý do tuần này có chữ 32 khách (LibreOffice); Final level 0:3 · 1:13 · 2:21 · 3:6 · 4:18; dxf có bgColor;
+  dashboard 0 lỗi, KH00274 "Chưa có lý do tuần này · tuần trước: …"
+```
+
 Soát:
 Kết quả:
--- claude - 2026-10-28 10:55 UTC+7
+-- claude - 2026-10-29 14:25 UTC+7
 
 ## HISTORY
 ### 2026-10-27
@@ -138,3 +165,8 @@ Failure: không
 Báo lỗi giả: không
 Lessons: muốn "khoá" một cột mà không phá tính năng khác của sheet thì khoá ở nguồn dữ liệu (tool không đọc lại tuần đã chốt), ô chỉ để báo người gõ.
 -- claude - 2026-10-27 16:55 UTC+7
+### 2026-10-29
+Failure: màu ở AR Risk không hiện trong Excel trên máy FIN (CF chỉ có fgColor). Phép thử và LibreOffice đều không bắt được vì chỉ kiểm giá trị công thức, không kiểm cách Excel tô màu.
+Báo lỗi giả: không
+Lessons: kiểm "thứ thấy trên màn hình" phải đối chiếu với file do Excel thật tạo ra (hoặc chạy trên Excel); LibreOffice tính đúng không có nghĩa Excel hiện đúng.
+-- claude - 2026-10-29 14:25 UTC+7

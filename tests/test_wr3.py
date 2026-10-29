@@ -20,6 +20,7 @@ sys.path.insert(0, str(GOC / "tests"))
 from wr import baocao, ghep, misa  # noqa: E402
 from wr import soghi as sg  # noqa: E402
 from wr import tinhtoan  # noqa: E402
+from wr import thuonghieu as th  # noqa: E402
 import runner  # noqa: E402
 import tao_du_lieu_gia as gia  # noqa: E402
 
@@ -352,7 +353,7 @@ def test_tuan_sau_doc_lai_bao_cao_tuan_truoc_o_goc_va_khong_ghi_de(ws, monkeypat
     sh = wb["Receivables"]
     for r in range(6, sh.max_row + 1):
         if sh.cell(row=r, column=3).value == "EASTWIND CARGO CO., LTD":
-            sh.cell(row=r, column=14, value="KTT ghi: đang kiện")
+            sh.cell(row=r, column=th.COT_LY_DO_NAY, value="KTT ghi: đang kiện")
     wb.save(bao_cao)
     time.sleep(1.1)
     os.utime(bao_cao)
@@ -368,4 +369,4 @@ def test_tuan_sau_doc_lai_bao_cao_tuan_truoc_o_goc_va_khong_ghi_de(ws, monkeypat
     ten = sorted(f.name for f in ws.ra.glob("2026_W*.xlsx"))
     assert len(ten) == 2 and any("chay lai" in t for t in ten)
     sh = openpyxl.load_workbook(bao_cao)["Receivables"]
-    assert any(sh.cell(row=r, column=14).value == "KTT ghi: đang kiện" for r in range(6, sh.max_row + 1))
+    assert any(sh.cell(row=r, column=th.COT_LY_DO_NAY).value == "KTT ghi: đang kiện" for r in range(6, sh.max_row + 1))

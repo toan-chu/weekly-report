@@ -337,7 +337,7 @@ def test_ban_nguoi_lam_thang_ban_tool_cung_ngay_chot(ws):
     sh = wb[th.SHEET_BANG]
     for r in range(6, sh.max_row + 1):
         if sh.cell(r, 2).value == "KA":
-            sh.cell(r, 14, value="KTT: khách hứa trả 10/10")
+            sh.cell(r, th.COT_LY_DO_NAY, value="KTT: khách hứa trả 10/10")
     nguoi = ws.ra / "W40 final cua KTT.xlsx"
     wb.save(nguoi)
     so = sg.SoGhi(ws.so_ghi)
@@ -374,7 +374,7 @@ def test_sales_chua_ghi_thi_o_ly_do_de_trong_khong_co_chu_tu_dong(ws):
     f = next(ws.ra.glob("*.xlsx"))
     rec = openpyxl.load_workbook(f)[th.SHEET_BANG]
     hang_a = next(r for r in rec.iter_rows(min_row=6, values_only=True) if r[1] == "KA")
-    assert hang_a[13] is None, "ô lý do của khách chưa giải trình để trống"
+    assert hang_a[th.COT_LY_DO_NAY - 1] is None, "ô lý do của khách chưa giải trình để trống"
     assert not any(th.NHAN_TU_DONG in str(v) for r in rec.iter_rows(values_only=True) for v in r if v)
     may = baocao.doc_bao_cao(f)
     assert may[misa.chuan_hoa_ten(A)].ly_do == ""

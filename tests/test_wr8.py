@@ -78,7 +78,7 @@ def test_fin_sua_thang_tren_file_tool_thi_thang(ws):
     sh = wb[th.SHEET_BANG]
     for r in range(6, sh.max_row + 1):
         if sh.cell(r, 2).value == "KA":
-            sh.cell(r, 14, value="FIN: khách hứa trả 15/10")
+            sh.cell(r, th.COT_LY_DO_NAY, value="FIN: khách hứa trả 15/10")
     wb.save(f)
     os.utime(f, (time.time() + 5, time.time() + 5))
     assert runner.nap_ban_tay(ws.ra, so) == 1

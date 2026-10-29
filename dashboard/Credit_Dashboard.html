@@ -485,7 +485,11 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
     const R = rows(wb, "Receivables");
     const ri = findRow(R, (r) => r.includes("Code") && r.includes("Total"));
     // WR-11 PA1: cột "Reason last week (read only)" — tìm theo tiêu đề (file cũ không có thì bỏ qua)
-    const iLw = (R[ri] || []).findIndex((v) => String(v ?? "").startsWith("Reason last week"));
+    const H0 = (R[ri] || []).map((v) => String(v ?? "").trim());
+    const iLw = H0.findIndex((v) => v.startsWith("Reason last week"));
+    // WR-12: từ 29/10 lý do tuần trước ở N, tuần này ở O, Đối chiếu ở P — tìm theo tiêu đề (file cũ: 13 / 14)
+    const iLd = H0.indexOf("Reason for late payment") >= 0 ? H0.indexOf("Reason for late payment") : 13;
+    const iDc = H0.findIndex((v) => v.startsWith("Đối chiếu")) >= 0 ? H0.findIndex((v) => v.startsWith("Đối chiếu")) : 14;
     d.cust = [];
     let cur = null;
     for (let i = ri + 1; i < R.length; i++) {
@@ -494,12 +498,12 @@ t.sheetStubs=true}if(t.type=="array"){t.type="binary";var a=xk(e,t);t.type="arra
       if (String(r[1] ?? "").trim().toUpperCase() === "TOTAL") break;
       if (name.startsWith("└")) {
         if (cur) cur.kids.push({ label: name.replace(/^└\s*/, ""), amount: n0(r[4]), sales: r[11] || "", job: r[12] || "",
-                                 b: BUCKETS.map((_, k) => n0(r[5 + k])), status: String(r[14] ?? "") });
+                                 b: BUCKETS.map((_, k) => n0(r[5 + k])), status: String(r[iDc] ?? "") });
         continue;
       }
       if (!r[1] || typeof r[4] !== "number") continue;
       cur = { code: String(r[1]).trim(), name, term: r[3] || "", total: r[4], b: BUCKETS.map((_, k) => n0(r[5 + k])),
-              sales: r[11] || "", job: r[12] || "", reason: String(r[13] ?? ""), dc: String(r[14] ?? ""),
+              sales: r[11] || "", job: r[12] || "", reason: String(r[iLd] ?? ""), dc: String(r[iDc] ?? ""),
               reasonLw: iLw >= 0 ? String(r[iLw] ?? "") : "", kids: [], inv: [] };
       cur.overdue = cur.b.slice(1).reduce((a, b) => a + b, 0);
       cur.oldest = cur.b.reduce((m, v, k) => (v > 0.5 ? k : m), 0);

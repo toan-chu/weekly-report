@@ -226,8 +226,8 @@ def ghi_master(dich: Path, dong: Sequence[Dict], sales: Sequence[str], ghi_chu: 
         dv.add(f"{c[k]}{DONG_DAU}:{c[k]}{cuoi}")
     ws.add_data_validation(dv)
 
-    do = PatternFill("solid", fgColor=th.DO_CANH_BAO)
-    vang = PatternFill("solid", fgColor=th.VANG_CANH_BAO)
+    do = th.nen_cf(th.DO_CANH_BAO)          # CF: Excel đọc bgColor (xem thuonghieu.nen_cf)
+    vang = th.nen_cf(th.VANG_CANH_BAO)
     tt = f"{c['trang_thai']}{DONG_DAU}"
     ws.conditional_formatting.add(f"{c['trang_thai']}{DONG_DAU}:{c['trang_thai']}{cuoi}",
         FormulaRule(formula=[f'{tt}="{TRANG_THAI[0]}"'], fill=do, font=Font(color="C00000", bold=True)))

@@ -67,8 +67,13 @@ def ghi_bao_cao(
     ws.title = th.SHEET_BANG
     # chữ tiêu đề lấy từ thuonghieu.py mỗi lần chạy, sửa ở đó là đủ
     ws["A1"], ws["A2"], ws["A4"] = th.CONG_TY, th.TEN_BAO_CAO, th.TEN_BANG
+    # mẫu chuẩn có 14 cột (cột cuối là lý do); từ WR-12 thêm cột lý do tuần trước ở N → mượn kiểu tiêu đề cột cuối mẫu
+    kieu_ly_do = copy(ws.cell(row=th.DONG_TIEU_DE, column=14)._style)
     for i, (ten_cot, _, rong) in enumerate(th.COT, start=1):
-        ws.cell(row=th.DONG_TIEU_DE, column=i).value = ten_cot
+        o = ws.cell(row=th.DONG_TIEU_DE, column=i)
+        if i >= th.COT_LY_DO_TRUOC_SO:
+            o._style = copy(kieu_ly_do)
+        o.value = ten_cot
         ws.column_dimensions[get_column_letter(i)].width = rong
     ws["A3"] = _ngay_en(ngay_chot)
 
@@ -79,18 +84,14 @@ def ghi_bao_cao(
     n_cot = len(th.COT) + (1 if co_doi_chieu else 0)
     if co_doi_chieu:
         _cot_doi_chieu(ws)
-    # WR-11 PA1: cột lý do tuần trước, ngay sau cột cuối — chỉ để đọc
-    n_cot += 1
-    c_lw = n_cot
-    o = ws.cell(row=th.DONG_TIEU_DE, column=c_lw, value=th.COT_LY_DO_TRUOC[0])
-    o._style = copy(ws.cell(row=th.DONG_TIEU_DE, column=len(th.COT))._style)
-    o.fill = PatternFill("solid", fgColor="7F7F7F")
-    ws.column_dimensions[get_column_letter(c_lw)].width = th.COT_LY_DO_TRUOC[1]
+    # WR-11 PA1 / WR-12: cột lý do tuần trước (N, chỉ để đọc, tiêu đề xám) nằm ngay bên trái lý do tuần này (O)
+    c_lw = th.COT_LY_DO_TRUOC_SO
+    ws.cell(row=th.DONG_TIEU_DE, column=c_lw).fill = PatternFill("solid", fgColor="7F7F7F")
     hang = th.DONG_DAU_DU_LIEU
     for stt, d in enumerate(dong, start=1):
         gia_tri = [stt, d.ma, d.ten, d.credit_term, d.total] + \
                   [v if abs(v) > 0.4 else None for v in d.nhom] + \
-                  [d.salesman, d.job, d.ly_do]
+                  [d.salesman, d.job, d.ly_do_truoc or None, d.ly_do]
         for cot, v in enumerate(gia_tri, start=1):
             o = ws.cell(row=hang, column=cot, value=v)
             o.font = Font(name=th.PHONG_NOI_DUNG, size=10)
@@ -102,7 +103,7 @@ def ghi_bao_cao(
                 o.alignment = Alignment(horizontal="center")
             else:
                 # Job Number không xuống dòng (danh sách job đầy đủ nằm ở các dòng con)
-                o.alignment = Alignment(vertical="top", wrap_text=cot == 14)
+                o.alignment = Alignment(vertical="top", wrap_text=cot in (th.COT_LY_DO_TRUOC_SO, th.COT_LY_DO_NAY))
         o = ws.cell(row=hang, column=c_lw, value=d.ly_do_truoc or None)
         o.font = Font(name=th.PHONG_NOI_DUNG, size=10, italic=True, color="595959")
         o.fill = PatternFill("solid", fgColor=th.XAM_NHAT)
